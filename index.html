@@ -2575,8 +2575,8 @@ document.getElementById('trimBtn').onclick = () => {
 // Dragging
 ['trimStart','trimEnd'].forEach(id => {
   const el = document.getElementById(id);
-  el.addEventListener('mousedown', e => { e.preventDefault(); trimDragging = id; });
-  el.addEventListener('touchstart', e => { e.preventDefault(); trimDragging = id; });
+  el.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); trimDragging = id; });
+  el.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); trimDragging = id; });
 });
 
 document.addEventListener('mousemove', e => {
