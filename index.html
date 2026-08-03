@@ -158,17 +158,18 @@ body {
 .timeline .trim-range { position:absolute; top:0; height:100%; background:rgba(74,158,255,.3); border-radius:0; }
 .trim-handle {
   position:absolute; top:-6px; width:4px; height:calc(100% + 18px);
-  background:#4a9eff; cursor:ew-resize; z-index:5; pointer-events:auto;
+  cursor:ew-resize; z-index:5; pointer-events:auto;
   box-shadow:0 0 8px rgba(74,158,255,.7); border-radius:2px;
+  transform:translateX(-50%);
 }
 .trim-handle::after {
   content:''; position:absolute; top:-8px; left:50%; transform:translateX(-50%);
-  width:16px; height:16px; border-radius:3px; background:#4a9eff;
+  width:16px; height:16px; border-radius:3px;
   box-shadow:0 0 10px rgba(74,158,255,.9);
 }
-.trim-handle.trim-start { left:0; background:#4a9eff; }
+.trim-handle.trim-start { background:#4a9eff; }
 .trim-handle.trim-start::after { background:#4a9eff; }
-.trim-handle.trim-end { left:100%; background:#ef4444; }
+.trim-handle.trim-end { background:#ef4444; }
 .trim-handle.trim-end::after { background:#ef4444; box-shadow:0 0 10px rgba(239,68,68,.9); }
 .trim-info { font-size:11px; color:#4a9eff; font-weight:500; white-space:nowrap; flex-shrink:0; }
 .btn-trim { background:#4a9eff; box-shadow:0 2px 10px rgba(74,158,255,.3); color:#fff; }
@@ -2538,11 +2539,14 @@ function showTrimHandles() {
 }
 
 function updateTrimUI() {
-  document.getElementById('trimStart').style.left = (trimStartPct * 100) + '%';
-  document.getElementById('trimEnd').style.left = (trimEndPct * 100) + '%';
-  const range = document.getElementById('trimRange');
-  range.style.left = (trimStartPct * 100) + '%';
-  range.style.width = ((trimEndPct - trimStartPct) * 100) + '%';
+  const s = document.getElementById('trimStart');
+  const e = document.getElementById('trimEnd');
+  const r = document.getElementById('trimRange');
+  s.style.left = (trimStartPct * 100) + '%';
+  e.style.left = (trimEndPct * 100) + '%';
+  r.style.left = (trimStartPct * 100) + '%';
+  r.style.width = ((trimEndPct - trimStartPct) * 100) + '%';
+  console.log('updateTrimUI:', trimStartPct, trimEndPct, 's.left:', s.style.left, 'e.left:', e.style.left, 's.display:', s.style.display, 'e.display:', e.style.display);
 
   const dur = totalDuration || duration || 0;
   const info = document.getElementById('trimInfo');
@@ -2560,7 +2564,7 @@ function formatTime(sec) {
 function getMasterDur() { return totalDuration || duration || 0; }
 function getMasterVid() { return videos.front || Object.values(videos).find(v => v); }
 
-// "剪辑" button — one click shows both lines
+// "剪辑" button
 document.getElementById('trimBtn').onclick = () => {
   trimStartPct = 0; trimEndPct = 1;
   trimActive = true;
@@ -2570,13 +2574,22 @@ document.getElementById('trimBtn').onclick = () => {
   document.getElementById('trimExportBtn').style.display = '';
   document.getElementById('trimBtn').style.display = 'none';
   updateTrimUI();
+  console.log('trim shown:', trimStartPct, trimEndPct);
 };
 
 // Dragging
 ['trimStart','trimEnd'].forEach(id => {
   const el = document.getElementById(id);
-  el.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); trimDragging = id; });
-  el.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); trimDragging = id; });
+  el.addEventListener('mousedown', e => {
+    e.preventDefault(); e.stopPropagation();
+    trimDragging = id;
+    console.log('trim drag start:', id);
+  });
+  el.addEventListener('touchstart', e => {
+    e.preventDefault(); e.stopPropagation();
+    trimDragging = id;
+    console.log('trim touch drag start:', id);
+  });
 });
 
 document.addEventListener('mousemove', e => {
@@ -2586,7 +2599,6 @@ document.addEventListener('mousemove', e => {
   if (trimDragging === 'trimStart') { if (pct < trimEndPct) trimStartPct = pct; }
   else { if (pct > trimStartPct) trimEndPct = pct; }
   updateTrimUI();
-  // Seek video to show current frame
   const dur = getMasterDur(); const v = getMasterVid();
   if (dur && v) { v.currentTime = pct * dur; }
 });
