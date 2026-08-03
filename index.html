@@ -2562,9 +2562,9 @@ function getMasterVid() { return videos.front || Object.values(videos).find(v =>
 document.getElementById('trimBtn').onclick = () => {
   trimStartPct = 0; trimEndPct = 1;
   trimActive = true;
-  document.getElementById('trimStart').style.display = '';
-  document.getElementById('trimEnd').style.display = '';
-  document.getElementById('trimRange').style.display = '';
+  document.getElementById('trimStart').style.display = 'block';
+  document.getElementById('trimEnd').style.display = 'block';
+  document.getElementById('trimRange').style.display = 'block';
   document.getElementById('trimExportBtn').style.display = '';
   document.getElementById('trimBtn').style.display = 'none';
   updateTrimUI();
