@@ -86,3 +86,7 @@ Firefox、Safari 支持单独选择视频文件播放。
 ## 许可证
 
 MIT
+
+## 关键词
+
+`tesla` `dashcam` `哨兵模式` `sentry-mode` `行车记录仪` `TeslaCam` `video-viewer` `6路摄像头` `纯前端` `无需安装` `HTML5` `JavaScript` `浏览器` `行车视频` `监控视频` `特斯拉` `多路同步` `MediaRecorder` `canvas`
