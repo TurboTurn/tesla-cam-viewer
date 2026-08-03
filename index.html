@@ -146,31 +146,25 @@ body {
 .play-btn:hover { transform:scale(1.06); box-shadow:0 4px 14px var(--accent-glow); }
 .play-btn:active { transform:scale(.97); }
 .timeline {
-  flex:1; height:5px; background:var(--panel2); border-radius:3px;
-  position:relative; cursor:pointer; overflow:hidden;
+  flex:1; height:8px; background:var(--panel2); border-radius:4px;
+  position:relative; cursor:pointer; margin:0 2px;
 }
-.timeline .progress {
-  height:100%; background:var(--accent); border-radius:3px; width:0%;
-  position:relative;
-}
-.timeline .progress::after {
-  content:''; position:absolute; right:0; top:50%; transform:translateY(-50%);
-  width:10px; height:10px; background:var(--accent); border-radius:50%;
-  box-shadow:0 0 8px var(--accent-glow); opacity:0; transition:opacity .15s ease;
-}
+.timeline:hover { height:10px; }
+.timeline .progress { position:absolute; height:100%; background:var(--accent); border-radius:3px; width:0%; transition:width .08s linear; }
+.timeline .progress::after { content:''; position:absolute; right:-6px; top:50%; transform:translateY(-50%); width:12px; height:12px; border-radius:50%; background:var(--accent); opacity:0; transition:opacity .15s ease; box-shadow:0 0 6px var(--accent-glow); }
 .timeline:hover .progress::after { opacity:1; }
 .timeline .buffer { position:absolute; height:100%; background:rgba(255,255,255,.06); border-radius:3px; width:0%; }
 /* Trim range & handles */
-.timeline .trim-range { position:absolute; top:0; height:100%; background:rgba(74,158,255,.25); border-radius:0; }
+.timeline .trim-range { position:absolute; top:0; height:100%; background:rgba(74,158,255,.3); border-radius:0; }
 .trim-handle {
-  position:absolute; top:-8px; width:3px; height:calc(100% + 16px);
+  position:absolute; top:-6px; width:4px; height:calc(100% + 18px);
   background:#4a9eff; cursor:ew-resize; z-index:5;
-  box-shadow:0 0 6px rgba(74,158,255,.6); display:none; border-radius:2px;
+  box-shadow:0 0 8px rgba(74,158,255,.7); display:none; border-radius:2px;
 }
-.trim-handle::before {
-  content:''; position:absolute; top:-6px; left:50%; transform:translateX(-50%);
-  width:12px; height:12px; border-radius:2px; background:#4a9eff;
-  box-shadow:0 0 8px rgba(74,158,255,.8);
+.trim-handle::after {
+  content:''; position:absolute; top:-8px; left:50%; transform:translateX(-50%);
+  width:16px; height:16px; border-radius:3px; background:#4a9eff;
+  box-shadow:0 0 10px rgba(74,158,255,.9);
 }
 .trim-handle.trim-start { left:0; }
 .trim-handle.trim-end { left:100%; }
