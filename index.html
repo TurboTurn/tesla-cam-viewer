@@ -175,9 +175,41 @@ body {
 .action-bar .btn { font-size:12px; padding:6px 12px; }
 
 /* Empty state */
-.empty-state { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--dim); animation: fadeInUp .6s ease; }
-.empty-state .icon { font-size:52px; margin-bottom:18px; opacity:.2; }
-.empty-state p { font-size:13px; line-height:1.7; text-align:center; max-width:420px; font-weight:400; }
+.empty-state {
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  color:var(--dim); animation: fadeInUp .6s ease; padding:40px 20px;
+}
+.empty-graphic { position:relative; margin-bottom:28px; }
+.empty-ring {
+  width:100px; height:100px; border-radius:50%;
+  border:2px solid rgba(255,255,255,.06);
+  animation: ringPulse 3s ease-in-out infinite;
+}
+@keyframes ringPulse {
+  0%,100% { transform:scale(1); opacity:.3; }
+  50% { transform:scale(1.15); opacity:.6; border-color:rgba(255,255,255,.1); }
+}
+.empty-icon {
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  font-size:40px; opacity:.5;
+}
+.empty-title { font-size:20px; font-weight:600; color:var(--text); margin-bottom:28px; letter-spacing:-.02em; }
+.empty-steps { display:flex; flex-direction:column; gap:12px; margin-bottom:24px; }
+.empty-step {
+  display:flex; align-items:center; gap:12px; font-size:12px; color:var(--dim);
+  background:var(--panel2); border:1px solid var(--border); border-radius:var(--radius);
+  padding:10px 14px; min-width:320px; max-width:420px; width:100%;
+  transition:all .2s ease;
+}
+.empty-step:hover { border-color:#3a3f48; }
+.step-num {
+  width:22px; height:22px; border-radius:50%; background:var(--accent);
+  color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center;
+  justify-content:center; flex-shrink:0; box-shadow:0 2px 8px var(--accent-glow);
+}
+.step-text { line-height:1.5; }
+.step-text b { color:var(--text); font-weight:600; }
+.empty-hint { font-size:11px; color:var(--dim); opacity:.5; }
 @keyframes fadeInUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
 
 /* Toast */
@@ -262,6 +294,11 @@ body {
   .controls { padding:8px 10px; flex-shrink:0; }
   .action-bar .btn { font-size:10px; padding:6px 10px; }
   .cam-tab { padding:5px 10px; font-size:10px; flex-shrink:0; }
+  /* Mobile empty state */
+  .empty-state { padding:24px 16px; }
+  .empty-title { font-size:17px; margin-bottom:22px; }
+  .empty-step { min-width:auto; max-width:100%; padding:8px 12px; font-size:11px; }
+  .step-num { width:20px; height:20px; font-size:10px; }
 }
 
 .sidebar-toggle { display:none; background:var(--panel2); border:1px solid var(--border); color:var(--text); padding:5px 10px; border-radius:6px; font-size:15px; cursor:pointer; line-height:1; flex-shrink:0; transition:all .15s ease; }
@@ -347,8 +384,26 @@ function trackClick(name, ext1) {
 
     <div class="video-grid" id="videoGrid">
       <div class="empty-state" id="emptyState">
-        <div class="icon">🎥</div>
-        <p>选择 TeslaCam 文件夹后<br>事件会出现在左侧列表</p>
+        <div class="empty-graphic">
+          <div class="empty-ring"></div>
+          <div class="empty-icon">🚗</div>
+        </div>
+        <div class="empty-title">Tesla Cam Viewer</div>
+        <div class="empty-steps">
+          <div class="empty-step">
+            <span class="step-num">1</span>
+            <span class="step-text">点击左侧 <b>选择文件夹</b>，选中 TeslaCam U 盘</span>
+          </div>
+          <div class="empty-step">
+            <span class="step-num">2</span>
+            <span class="step-text">左侧列表会显示所有哨兵/保存/循环录像事件</span>
+          </div>
+          <div class="empty-step">
+            <span class="step-num">3</span>
+            <span class="step-text">点击事件即可查看 6 路摄像头同步回放</span>
+          </div>
+        </div>
+        <div class="empty-hint">也支持直接选择单个视频文件</div>
       </div>
     </div>
 
