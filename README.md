@@ -75,13 +75,16 @@ Tesla 在 H.264 视频流的 SEI NAL 单元中以 protobuf 格式嵌入了车辆
 - **地图**：Leaflet（CDN 加载，用于 GPS 轨迹显示）
 - **车型**：Tesla Model 3/Y 行车记录仪格式
 
-## 浏览器兼容性
+## 平台支持
 
-Chrome / Edge 全功能支持（需要 File System Access API 选择文件夹）。
+| 平台 | 系统 | 浏览器 | 功能 |
+|------|------|--------|------|
+| 💻 桌面 | Windows / macOS / Linux | Chrome / Edge | 全功能（文件夹选择 + 6 路同步） |
+| 💻 桌面 | Windows / macOS / Linux | Firefox / Safari | 可选视频文件播放 |
+| 📱 移动 | Android | Chrome | 选择文件夹或多个视频文件 |
+| 📱 移动 | iOS | Safari / Chrome | 选择多个视频文件 |
 
-Firefox、Safari 支持单独选择视频文件播放。
-
-手机端 Chrome / Safari 均可使用。
+> 纯 HTML5 + JavaScript，无需安装任何软件，打开浏览器即用。
 
 ## 许可证
 
