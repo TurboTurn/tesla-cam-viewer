@@ -158,8 +158,8 @@ body {
 .timeline .trim-range { position:absolute; top:0; height:100%; background:rgba(74,158,255,.3); border-radius:0; }
 .trim-handle {
   position:absolute; top:-6px; width:4px; height:calc(100% + 18px);
-  background:#4a9eff; cursor:ew-resize; z-index:5;
-  box-shadow:0 0 8px rgba(74,158,255,.7); display:none; border-radius:2px;
+  background:#4a9eff; cursor:ew-resize; z-index:5; pointer-events:auto;
+  box-shadow:0 0 8px rgba(74,158,255,.7); border-radius:2px;
 }
 .trim-handle::after {
   content:''; position:absolute; top:-8px; left:50%; transform:translateX(-50%);
@@ -521,9 +521,9 @@ function trackClick(name, ext1) {
         <div class="timeline" id="timeline">
           <div class="buffer" id="bufferBar"></div>
           <div class="progress" id="progressBar"></div>
-          <div class="trim-range" id="trimRange"></div>
-          <div class="trim-handle trim-start" id="trimStart"></div>
-          <div class="trim-handle trim-end" id="trimEnd"></div>
+          <div class="trim-range" id="trimRange" style="display:none;"></div>
+          <div class="trim-handle trim-start" id="trimStart" style="display:none;"></div>
+          <div class="trim-handle trim-end" id="trimEnd" style="display:none;"></div>
         </div>
         <div class="time-display" id="timeDisplay">00:00 / 00:00</div>
         <span class="trim-info" id="trimInfo" style="display:none;"></span>
