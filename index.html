@@ -166,8 +166,10 @@ body {
   width:16px; height:16px; border-radius:3px; background:#4a9eff;
   box-shadow:0 0 10px rgba(74,158,255,.9);
 }
-.trim-handle.trim-start { left:0; }
-.trim-handle.trim-end { left:100%; }
+.trim-handle.trim-start { left:0; background:#4a9eff; }
+.trim-handle.trim-start::after { background:#4a9eff; }
+.trim-handle.trim-end { left:100%; background:#ef4444; }
+.trim-handle.trim-end::after { background:#ef4444; box-shadow:0 0 10px rgba(239,68,68,.9); }
 .trim-info { font-size:11px; color:#4a9eff; font-weight:500; white-space:nowrap; flex-shrink:0; }
 .btn-trim { background:#4a9eff; box-shadow:0 2px 10px rgba(74,158,255,.3); color:#fff; }
 .btn-trim:hover { box-shadow:0 4px 18px rgba(74,158,255,.45); }
@@ -2584,6 +2586,9 @@ document.addEventListener('mousemove', e => {
   if (trimDragging === 'trimStart') { if (pct < trimEndPct) trimStartPct = pct; }
   else { if (pct > trimStartPct) trimEndPct = pct; }
   updateTrimUI();
+  // Seek video to show current frame
+  const dur = getMasterDur(); const v = getMasterVid();
+  if (dur && v) { v.currentTime = pct * dur; }
 });
 document.addEventListener('touchmove', e => {
   if (!trimDragging) return;
@@ -2592,6 +2597,8 @@ document.addEventListener('touchmove', e => {
   if (trimDragging === 'trimStart') { if (pct < trimEndPct) trimStartPct = pct; }
   else { if (pct > trimStartPct) trimEndPct = pct; }
   updateTrimUI();
+  const dur = getMasterDur(); const v = getMasterVid();
+  if (dur && v) { v.currentTime = pct * dur; }
 });
 document.addEventListener('mouseup', () => { trimDragging = null; });
 document.addEventListener('touchend', () => { trimDragging = null; });
