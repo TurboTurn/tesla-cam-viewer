@@ -22,7 +22,7 @@
 
 ## 截图
 
-![Tesla Cam Viewer](screenshot.png)
+![Tesla Cam Viewer - 6 cameras + timeline](screenshot-preview.jpg)
 
 ## 快速开始
 
