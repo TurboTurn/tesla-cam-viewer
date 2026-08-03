@@ -6,7 +6,7 @@
 <title>Tesla 监控视频查看器</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
+<script src="sei-telemetry.js?v4"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -60,6 +60,16 @@ body {
 .upload-btns { display:flex; gap:6px; flex-wrap:wrap; }
 
 /* ── Event List ── */
+.filter-tabs {
+  display:flex; gap:4px; padding:10px 18px; border-bottom:1px solid var(--border);
+}
+.filter-tab {
+  padding:4px 10px; background:var(--panel2); border:1px solid var(--border);
+  border-radius:12px; color:var(--dim); font-size:11px; cursor:pointer;
+  transition:all .18s ease; white-space:nowrap; font-weight:500; font-family:var(--font);
+}
+.filter-tab:hover { color:var(--text); border-color:#3a3f48; }
+.filter-tab.active { background:var(--accent); color:#fff; border-color:var(--accent); box-shadow:0 2px 8px var(--accent-glow); }
 .event-list { flex:1; overflow-y:auto; }
 .event-list::-webkit-scrollbar { width:4px; }
 .event-list::-webkit-scrollbar-track { background:transparent; }
@@ -95,7 +105,7 @@ body {
 }
 .seg-item:hover { background:var(--hover); color:var(--text); }
 .seg-item.active { border-left-color:var(--accent); color:var(--accent); background:rgba(232,33,15,.06); }
-.seg-separator { padding:4px 14px; text-align:center; color:var(--dim); font-size:12px; font-weight:500; }
+.seg-separator { padding:4px 14px; text-align:center; color:var(--dim); font-size:10px; font-weight:500; }
 
 /* ── Main Area ── */
 .main { flex:1; display:flex; flex-direction:column; min-width:0; overflow:hidden; }
@@ -194,7 +204,7 @@ body {
   font-size:48px; opacity:.6;
 }
 .empty-title { font-size:20px; font-weight:600; color:var(--text); margin-bottom:28px; letter-spacing:-.02em; }
-.empty-steps { display:flex; flex-direction:column; gap:14px; margin-bottom:24px; }
+.empty-steps { display:flex; flex-direction:column; gap:12px; margin-bottom:24px; }
 .empty-step {
   display:flex; align-items:center; gap:10px; font-size:12px; color:var(--dim);
   background:var(--panel2); border:1px solid var(--border); border-radius:var(--radius);
@@ -271,6 +281,8 @@ body {
   .speed-select { padding:5px 8px; font-size:13px; }
   .cam-tabs { gap:4px; margin-bottom:6px; overflow-x:auto; flex-wrap:nowrap; -webkit-overflow-scrolling:touch; }
   .cam-tab { padding:4px 8px; font-size:10px; flex-shrink:0; }
+  .filter-tabs { padding:8px 16px; gap:6px; }
+  .filter-tab { padding:6px 12px; font-size:13px; }
   .action-bar { gap:5px; }
   .action-bar .btn { font-size:10px; padding:5px 7px; }
   .topbar { padding:8px 12px; min-height:44px; gap:6px; flex-shrink:0; }
@@ -325,6 +337,36 @@ body {
 .tip-modal .btn-close-tip:hover { color:var(--text); border-color:var(--dim); }
 
 #fileInput, #folderInput { display:none; }
+
+/* Telemetry overlay — only for local deployment */
+.telemetry-overlay { position:absolute; top:58px; right:20px; background:rgba(13,15,19,.92); color:#fff; font-size:12px; padding:10px 14px; border-radius:10px; z-index:6; font-variant-numeric:tabular-nums; line-height:1.8; display:none; border:1px solid var(--border); min-width:200px; box-shadow:0 4px 16px rgba(0,0,0,.5); }
+.telemetry-overlay .tl-row { display:flex; gap:6px; align-items:center; }
+.telemetry-overlay .tl-icon { font-size:14px; line-height:1; flex-shrink:0; min-width:20px; text-align:center; }
+.telemetry-overlay .tl-label { color:#888; font-size:11px; min-width:36px; }
+.telemetry-overlay .tl-value { font-weight:600; flex:1; }
+.telemetry-overlay .tl-unit { color:#666; font-size:10px; }
+.telemetry-overlay .tl-speed { font-size:18px; font-weight:700; }
+.telemetry-overlay .tl-pedals { display:flex; align-items:center; flex:1; gap:4px; }
+.telemetry-overlay .tl-pedal-group { display:flex; align-items:center; gap:3px; }
+.telemetry-overlay .tl-divider { height:1px; background:var(--border); margin:4px -2px; }
+.telemetry-overlay .tl-badge { display:inline-block; font-size:9px; padding:1px 5px; border-radius:3px; margin-left:4px; font-weight:600; }
+.tl-badge-park { background:#555; color:#aaa; }
+.tl-badge-drive { background:#2196F3; color:#fff; }
+.tl-badge-reverse { background:#FF9800; color:#fff; }
+.tl-badge-neutral { background:#9E9E9E; color:#fff; }
+.tl-badge-fsd { background:#4CAF50; color:#fff; }
+.tl-badge-autosteer { background:#00BCD4; color:#fff; }
+.tl-badge-tacc { background:#FFC107; color:#000; }
+.tl-badge-off { background:#333; color:#666; }
+.tl-badge-brake { background:#f44336; color:#fff; }
+.tl-badge-nobrake { background:transparent; color:#555; }
+.tl-badge-blink { background:#FF9800; color:#fff; animation:pulse 1s infinite; }
+.tl-badge-noblink { background:transparent; color:#555; }
+@media (max-width:768px) {
+  .telemetry-overlay { top:46px; right:8px; font-size:10px; padding:6px 10px; min-width:170px; line-height:1.6; }
+  .telemetry-overlay .tl-speed { font-size:17px; }
+  .telemetry-overlay .tl-label { min-width:28px; font-size:9px; }
+}
 </style>
 <!-- 腾讯云 RUM 前端性能监控 -->
 <script src="https://tam.cdn-go.cn/aegis-sdk/latest/aegis.min.js"></script>
@@ -361,6 +403,12 @@ function trackClick(name, ext1) {
           <button class="btn btn-secondary" id="selectFileBtn">选视频文件</button>
         </div>
       </div>
+      <div class="filter-tabs" id="filterTabs" style="display:none;">
+        <button class="filter-tab active" data-filter="all">全部</button>
+        <button class="filter-tab" data-filter="sentry">🔔 哨兵</button>
+        <button class="filter-tab" data-filter="saved">⭐ 保存</button>
+        <button class="filter-tab" data-filter="recent">📹 录像</button>
+      </div>
     </div>
     <div class="event-list" id="eventList">
       <div style="padding:20px 16px;color:var(--dim);font-size:13px;text-align:center;">
@@ -380,6 +428,44 @@ function trackClick(name, ext1) {
         <div class="title" id="currentTitle">Tesla 监控查看器</div>
       </div>
       <div class="meta" id="currentMeta">请从左侧选择事件</div>
+    </div>
+
+    <div class="telemetry-overlay" id="telemetryOverlay">
+      <div class="tl-row" style="align-items:baseline">
+        <span class="tl-icon">🏁</span><span class="tl-label">速度</span>
+        <span class="tl-value tl-speed" id="tlSpeed">--</span>
+        <span class="tl-unit">km/h</span>
+        <span class="tl-badge tl-badge-off" id="tlGear">P</span>
+      </div>
+      <div class="tl-row">
+        <span class="tl-icon">🚗</span><span class="tl-label">踏板</span>
+        <div class="tl-pedals">
+          <span class="tl-pedal-group"><span class="tl-label" style="min-width:auto">油门</span><span class="tl-value" id="tlAccel" style="font-size:12px">--</span><span class="tl-unit">%</span></span>
+          <span class="tl-pedal-group" style="margin-left:10px"><span class="tl-label" style="min-width:auto">刹车</span><span id="tlBrakeBadge" class="tl-badge tl-badge-nobrake">BRK</span></span>
+        </div>
+      </div>
+      <div class="tl-row">
+        <span class="tl-icon">🛞</span><span class="tl-label">转向</span>
+        <span class="tl-value" id="tlSteer">--</span><span class="tl-unit">°</span>
+        <span id="tlBlinkerL" class="tl-badge tl-badge-noblink">◀左</span>
+        <span id="tlBlinkerR" class="tl-badge tl-badge-noblink">右▶</span>
+      </div>
+      <div class="tl-row">
+        <span class="tl-icon">📐</span><span class="tl-label">G力</span>
+        <span class="tl-value" id="tlGforce">--</span><span class="tl-unit">m/s²</span>
+      </div>
+      <div class="tl-row">
+        <span class="tl-icon">🤖</span><span class="tl-label">智驾</span>
+        <span class="tl-badge tl-badge-off" id="tlAutopilot" style="flex:1;text-align:center">OFF</span>
+      </div>
+      <div class="tl-divider"></div>
+      <div class="tl-row" id="apiCmpPanel" style="display:none">
+        <span class="tl-icon">📡</span><span class="tl-label">API</span>
+        <div style="flex:1;font-size:10px;line-height:1.5">
+          <div><span style="color:#888">速度</span> <b id="cmpApiSpeed">--</b> km/h <span style="color:#888;margin-left:6px">偏差</span> <b id="cmpSpeedDiff">--</b></div>
+          <div><span style="color:#888">电量</span> <b id="cmpBattery">--</b>% <span style="color:#888;margin-left:6px">功率</span> <b id="cmpPower">--</b>kW</div>
+        </div>
+      </div>
     </div>
 
     <div class="video-grid" id="videoGrid">
@@ -586,6 +672,7 @@ async function restoreDirHandle() {
           events = parseFolderFiles(files);
           console.log('[restore] events parsed:', events.length);
           renderEventList();
+          setupFilterTabs();
         }
       } else {
         savedDirHandle = stored.handle;
@@ -613,6 +700,7 @@ function showRestoreButton() {
         if (files.length) {
           events = parseFolderFiles(files);
           renderEventList();
+          setupFilterTabs();
           showToast(`已恢复 ${events.length} 个事件`);
         }
       }
@@ -671,6 +759,7 @@ selectBtn.onclick = async () => {
       }
       events = parseFolderFiles(files);
       renderEventList();
+      setupFilterTabs();
       showToast(`已加载 ${events.length} 个事件，共 ${events.reduce((s,e)=>s+e.segments.length,0)} 段视频`);
     } catch(e) {
       if (e.name !== 'AbortError') console.warn('FS Access error:', e);
@@ -717,6 +806,7 @@ folderInput.onchange = (e) => {
   if (!files.length) return;
   events = parseFolderFiles(files);
   renderEventList();
+  setupFilterTabs();
   showToast(`已加载 ${events.length} 个事件，共 ${events.reduce((s,e)=>s+e.segments.length,0)} 段视频`);
 };
 
@@ -747,6 +837,7 @@ fileInput.onchange = (e) => {
     segments: segments
   }];
   renderEventList();
+  setupFilterTabs();
   showToast(`已加载 ${segments.length} 段视频`);
 };
 
@@ -880,6 +971,10 @@ function renderEventList() {
     const div = document.createElement('div');
     div.className = 'event-item';
     div.dataset.eventIdx = idx;
+    let typeClass = 'ev-type-recent';
+    if (ev.type && ev.type.includes('哨兵')) typeClass = 'ev-type-sentry';
+    else if (ev.type && (ev.type.includes('手动') || ev.type.includes('保存'))) typeClass = 'ev-type-saved';
+    div.dataset.type = typeClass;
 
     const segCount = ev.segments.length;
     const startTime = formatEventTime(ev.segments[0].name);
@@ -899,9 +994,6 @@ function renderEventList() {
     const typeStr = ev.type || '📹 录像';
     const icon = typeStr.split(' ')[0];
     const typeLabel = typeStr.split(' ').slice(1).join(' ') || '录像';
-    let typeClass = 'ev-type-recent';
-    if (typeStr.includes('哨兵')) typeClass = 'ev-type-sentry';
-    else if (typeStr.includes('手动') || typeStr.includes('保存')) typeClass = 'ev-type-saved';
 
     div.innerHTML = `
       <div class="ev-icon">${icon}</div>
@@ -920,6 +1012,36 @@ function renderEventList() {
 function formatEventTime(name) {
   // 2024-01-15_10-23-45 → 2024-01-15 10:23:45
   return name.replace('_', ' ').replace(/-/g, (m, i) => i > 10 ? ':' : '-');
+}
+
+// ═══════════════════════════════════════════
+// Event type filter
+// ═══════════════════════════════════════════
+let currentFilter = 'all';
+
+function setupFilterTabs() {
+  const tabs = document.getElementById('filterTabs');
+  tabs.style.display = 'flex';
+  tabs.querySelectorAll('.filter-tab').forEach(tab => {
+    tab.onclick = () => {
+      tabs.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentFilter = tab.dataset.filter;
+      applyFilter();
+    };
+  });
+}
+
+function applyFilter() {
+  const items = document.querySelectorAll('#eventList .event-item');
+  items.forEach(item => {
+    const type = item.dataset.type;
+    if (currentFilter === 'all' || type === 'ev-type-' + currentFilter) {
+      item.style.display = '';
+    } else {
+      item.style.display = 'none';
+    }
+  });
 }
 
 // ═══════════════════════════════════════════
@@ -974,6 +1096,8 @@ function selectEvent(idx) {
 
   selectSegment(0);
   if (isMobile) closeSidebar();
+  // Load telemetry data for this event's time range
+  // loadTelemetry(currentEvent);  // DISABLED: 不再从视频解析行驶数据
 }
 
 function preloadSegmentDurations(segs, idx) {
@@ -1466,6 +1590,256 @@ function fmtTime(s) {
 }
 
 // ═══════════════════════════════════════════
+// Telemetry (TeslaMate data overlay)
+// ═══════════════════════════════════════════
+let telemetryData = []; // SEI telemetry from video, sorted by timeOffset
+let telemetryLoaded = false;
+let apiTelemetryData = []; // TeslaMate API data for comparison
+let apiTelemetryLoaded = false;
+
+async function loadTelemetry(event) {
+  telemetryData = [];
+  telemetryLoaded = false;
+  apiTelemetryData = [];
+  apiTelemetryLoaded = false;
+  const overlay = document.getElementById('telemetryOverlay');
+  if (overlay) overlay.style.display = 'none';
+
+  if (!event || !event.segments || !event.segments.length) return;
+
+  // ── Extract SEI telemetry from front camera video of each segment ──
+  for (let si = 0; si < event.segments.length; si++) {
+    const seg = event.segments[si];
+    const frontFile = seg.files['front'] || Object.values(seg.files)[0];
+    if (!frontFile) continue;
+
+    const segBaseTime = parseSegTimestamp(seg.name);
+    if (!segBaseTime) continue;
+
+    try {
+      const seiData = await extractTelemetryFromMp4(frontFile, (done, total) => {
+        // Could show progress in UI
+      });
+      if (seiData.length > 0) {
+        // Add segment base time offset
+        for (const d of seiData) {
+          d.absoluteTime = segBaseTime.getTime() + d.timeOffset * 1000;
+          d.segmentIdx = si;
+        }
+        telemetryData.push(...seiData);
+      }
+    } catch(e) {
+      console.warn('[SEI] extraction failed for segment', si, e);
+    }
+  }
+
+  if (telemetryData.length > 0) {
+    telemetryLoaded = true;
+    if (overlay) overlay.style.display = 'block';
+    console.log('[SEI] extracted', telemetryData.length, 'telemetry points');
+    console.log('[SEI] first point:', telemetryData[0]);
+    console.log('[SEI] speed mps:', telemetryData[0].speedMps, '→ km/h:', (telemetryData[0].speedMps * 3.6).toFixed(1));
+    console.log('[SEI] gps:', telemetryData[0].latitude, telemetryData[0].longitude);
+    console.log('[SEI] gear:', telemetryData[0].gearState, 'steer:', telemetryData[0].steeringAngle);
+    // Dump raw payload hex of first decoded point
+    if (window._lastSeiPayloadHex) {
+      console.log('[SEI] raw payload hex (first 80 bytes):', window._lastSeiPayloadHex);
+    }
+
+    // Build GPS polyline for map from SEI data
+    const gpsPoints = telemetryData.filter(d => d.latitude && d.longitude);
+    if (gpsPoints.length > 1) {
+      pendingSeiGpsTrack = gpsPoints.map(d => [d.latitude, d.longitude]);
+    }
+  }
+
+  // ── Also fetch TeslaMate API data for comparison ──
+  loadApiTelemetry(event);
+}
+
+async function loadApiTelemetry(event) {
+  const firstSeg = event.segments[0];
+  const lastSeg = event.segments[event.segments.length - 1];
+  const startTs = parseSegTimestamp(firstSeg.name);
+  const endTs = parseSegTimestamp(lastSeg.name);
+  if (!startTs || !endTs) return;
+
+  // Add duration of last segment to end time
+  const lastFile = Object.values(lastSeg.files)[0];
+  if (lastFile) {
+    const tmpV = document.createElement('video');
+    tmpV.preload = '元数据';
+    const url = URL.createObjectURL(lastFile);
+    const endPromise = new Promise(resolve => {
+      tmpV.onloadedmetadata = () => resolve(tmpV.duration || 60);
+      tmpV.onerror = () => resolve(60);
+      setTimeout(() => resolve(60), 3000);
+    });
+    tmpV.src = url;
+    const dur = await endPromise;
+    endTs.setTime(endTs.getTime() + dur * 1000);
+    URL.revokeObjectURL(url);
+    tmpV.removeAttribute('src');
+    tmpV.load();
+  }
+
+  const startISO = startTs.toLocaleString('sv-SE', { timeZone: 'Asia/Shanghai', hour12: false });
+  const endISO = endTs.toLocaleString('sv-SE', { timeZone: 'Asia/Shanghai', hour12: false });
+
+  const apiUrl = location.hostname && location.hostname !== 'localhost' && location.hostname !== ''
+    ? `${location.origin}/trips-dynamic/api/telemetry`
+    : 'https://stephenyi.cn/trips-dynamic/api/telemetry';
+
+  try {
+    const resp = await fetch(`${apiUrl}?start=${encodeURIComponent(startISO)}&end=${encodeURIComponent(endISO)}`);
+    if (resp.ok) {
+      const result = await resp.json();
+      apiTelemetryData = result.data || [];
+      apiTelemetryLoaded = apiTelemetryData.length > 0;
+      console.log('[API] fetched', apiTelemetryData.length, 'telemetry points for comparison');
+    }
+  } catch(e) {
+    // Network error — silently skip
+  }
+}
+
+function updateTelemetryOverlay() {
+  if (!telemetryLoaded || telemetryData.length === 0 || !currentSegment) return;
+
+  // Find closest SEI telemetry point by timeOffset within current segment
+  const segIdx = currentEvent.segments.indexOf(currentSegment);
+  const segData = telemetryData.filter(d => d.segmentIdx === segIdx);
+  if (segData.length === 0) return;
+
+  // Binary search by timeOffset
+  const targetTime = currentTime;
+  let best = null;
+  let bestDiff = Infinity;
+  let lo = 0, hi = segData.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const diff = Math.abs(segData[mid].timeOffset - targetTime);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      best = segData[mid];
+    }
+    if (segData[mid].timeOffset < targetTime) lo = mid + 1;
+    else hi = mid - 1;
+  }
+
+  if (!best || bestDiff > 2) {
+    // No SEI data for this point — try API data as fallback
+    if (apiTelemetryLoaded && apiTelemetryData.length > 0) {
+      updateApiComparison({ speedMps: 0, absoluteTime: parseSegTimestamp(currentSegment.name)?.getTime() + currentTime * 1000 });
+    }
+    return;
+  }
+
+  // ── Update SEI HUD ──
+  const GEAR_NAMES = ['P', 'D', 'R', 'N'];
+  const GEAR_CLASSES = ['tl-badge-park', 'tl-badge-drive', 'tl-badge-reverse', 'tl-badge-neutral'];
+  const AP_NAMES = ['OFF', 'FSD', 'Autosteer', 'TACC'];
+  const AP_CLASSES = ['tl-badge-off', 'tl-badge-fsd', 'tl-badge-autosteer', 'tl-badge-tacc'];
+
+  // Speed
+  document.getElementById('tlSpeed').textContent = formatSpeed(best.speedMps);
+
+  // Gear
+  const gearEl = document.getElementById('tlGear');
+  gearEl.textContent = GEAR_NAMES[best.gearState] || '?';
+  gearEl.className = 'tl-badge ' + (GEAR_CLASSES[best.gearState] || 'tl-badge-off');
+
+  // Steering + blinkers
+  document.getElementById('tlSteer').textContent = best.steeringAngle.toFixed(0);
+  const blinkL = document.getElementById('tlBlinkerL');
+  const blinkR = document.getElementById('tlBlinkerR');
+  const bL = !!best.blinkerLeft;
+  const bR = !!best.blinkerRight;
+  blinkL.className = 'tl-badge ' + (bL ? 'tl-badge-blink' : 'tl-badge-noblink');
+  blinkL.textContent = bL ? '◀左' : '◀左';
+  blinkR.className = 'tl-badge ' + (bR ? 'tl-badge-blink' : 'tl-badge-noblink');
+  blinkR.textContent = bR ? '右▶' : '右▶';
+  // Debug
+  if (!window._blinkerLogged) {
+    console.log('[SEI] blinker sample:', telemetryData.slice(0, 20).map(d => ({bl: d.blinkerLeft, br: d.blinkerRight})));
+    window._blinkerLogged = true;
+  }
+
+  // Brake
+  const brakeBadge = document.getElementById('tlBrakeBadge');
+  if (best.brakeApplied) {
+    brakeBadge.className = 'tl-badge tl-badge-brake';
+    brakeBadge.textContent = '刹车';
+  } else {
+    brakeBadge.className = 'tl-badge tl-badge-nobrake';
+    brakeBadge.textContent = 'BRK';
+  }
+
+  // Accelerator + Autopilot
+  const accelPct = Math.round(best.accelPedal * 100);
+  document.getElementById('tlAccel').textContent = accelPct;
+  const apEl = document.getElementById('tlAutopilot');
+  apEl.textContent = AP_NAMES[best.autopilotState] || 'OFF';
+  apEl.className = 'tl-badge ' + (AP_CLASSES[best.autopilotState] || 'tl-badge-off');
+
+  // G-force
+  const gForce = Math.sqrt(
+    (best.accelX || 0) ** 2 + (best.accelY || 0) ** 2 + (best.accelZ || 0) ** 2
+  );
+  document.getElementById('tlGforce').textContent = gForce.toFixed(2);
+
+  // ── Update API comparison overlay ──
+  if (apiTelemetryLoaded && apiTelemetryData.length > 0) {
+    updateApiComparison(best);
+  }
+}
+
+function updateApiComparison(seiPoint) {
+  const cmpPanel = document.getElementById('apiCmpPanel');
+  if (!cmpPanel) return;
+
+  // Find closest API telemetry point by absolute time
+  const targetTs = Math.floor((seiPoint.absoluteTime || 0) / 1000);
+  let best = null;
+  let bestDiff = Infinity;
+  let lo = 0, hi = apiTelemetryData.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const diff = Math.abs(apiTelemetryData[mid].ts - targetTs);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      best = apiTelemetryData[mid];
+    }
+    if (apiTelemetryData[mid].ts < targetTs) lo = mid + 1;
+    else hi = mid - 1;
+  }
+
+  if (!best || bestDiff > 30) {
+    cmpPanel.style.display = 'none';
+    return;
+  }
+
+  cmpPanel.style.display = 'flex';
+  const seiSpeed = (seiPoint.speedMps * 3.6).toFixed(1);
+  const apiSpeed = best.speed != null ? best.speed.toFixed(1) : '--';
+  const diff = (apiSpeed !== '--')
+    ? Math.abs(parseFloat(seiSpeed) - parseFloat(apiSpeed)).toFixed(1)
+    : '--';
+
+  document.getElementById('cmpApiSpeed').textContent = apiSpeed;
+  const diffEl = document.getElementById('cmpSpeedDiff');
+  diffEl.textContent = diff;
+  diffEl.style.color = diff === '--' ? '#666' : (parseFloat(diff) > 5 ? '#f44336' : '#4CAF50');
+  document.getElementById('cmpBattery').textContent = best.battery != null ? best.battery : '--';
+  const powerEl = document.getElementById('cmpPower');
+  if (best.power != null) {
+    powerEl.textContent = best.power;
+    powerEl.style.color = best.power < 0 ? '#4CAF50' : (best.power > 20 ? '#f44336' : '#fff');
+  } else {
+    powerEl.textContent = '--';
+    powerEl.style.color = '#888';
+  }
+}
 
 // ═══════════════════════════════════════════
 // Timestamp overlay (real-time)
@@ -1508,6 +1882,8 @@ function updateTimestampOverlay() {
     document.getElementById('currentMeta').textContent = `${tsStr} · ${currentEvent.type||''}`;
   }
 
+  // Update telemetry overlay
+  // updateTelemetryOverlay();  // DISABLED: 不再从视频解析行驶数据
 }
 
 // ═══════════════════════════════════════════
