@@ -322,8 +322,8 @@ body {
   .step-num { width:24px; height:24px; font-size:13px; }
 }
 
-.sidebar-toggle { display:none; background:#282d36; border:1px solid #3a3f48; color:#c0c6ce; padding:6px 12px; border-radius:var(--radius); font-size:13px; cursor:pointer; line-height:1; flex-shrink:0; transition:all .15s ease; font-family:var(--font); font-weight:500; }
-.sidebar-toggle:hover { background:#323843; border-color:#555c68; color:#fff; }
+.sidebar-toggle { display:none; background:#4a9eff; border:1px solid #5aaeff; color:#fff; padding:6px 12px; border-radius:var(--radius); font-size:13px; cursor:pointer; line-height:1; flex-shrink:0; transition:all .15s ease; font-family:var(--font); font-weight:500; box-shadow:0 2px 10px rgba(74,158,255,.3); }
+.sidebar-toggle:hover { background:#5cb0ff; border-color:#7cc0ff; color:#fff; box-shadow:0 4px 16px rgba(74,158,255,.45); }
 
 /* Sidebar footer */
 .sidebar-footer { padding:14px 18px; border-top:1px solid var(--border); margin-top:auto; }
@@ -433,7 +433,7 @@ function trackClick(name, ext1) {
   <div class="main">
     <div class="topbar">
       <div class="topbar-left">
-        <button class="sidebar-toggle" id="sidebarToggle">☰ 事件</button>
+        <button class="sidebar-toggle" id="sidebarToggle">📂 导入视频</button>
         <div class="title" id="currentTitle">Tesla 监控查看器</div>
       </div>
       <div class="meta" id="currentMeta">请从左侧选择事件</div>
