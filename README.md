@@ -26,6 +26,15 @@
 
 ## 快速开始
 
+### 🌐 在线体验
+
+| 版本 | 地址 | 说明 |
+|------|------|------|
+| GitHub Pages | [turboturn.github.io/tesla-cam-viewer](https://turboturn.github.io/tesla-cam-viewer/) | 海外访问推荐 |
+| 国内自部署 | [stephenyi.cn/tesla-cam](https://stephenyi.cn/tesla-cam/) | 国内访问更快 |
+
+### 🖥 本地使用
+
 1. 克隆或下载本项目
 2. 用浏览器打开 `index.html`
 3. 点击 **选择文件夹**，选中 TeslaCam U 盘根目录
