@@ -552,9 +552,8 @@ function trackClick(name, ext1) {
         <button class="btn btn-record" id="recordBtn">🎬 录制</button>
         <button class="btn btn-download" id="downloadEventBtn">⬇ 下载原始</button>
         <button class="btn btn-metadata" id="metadataBtn">ℹ 元数据</button>
-        <button class="btn btn-trim" id="trimMarkBtn" style="display:none;">✂ 标记起点</button>
-        <button class="btn btn-trim" id="trimEndBtn" style="display:none;">✂ 标记终点</button>
-        <button class="btn btn-trim" id="trimExportBtn" style="display:none;">📦 导出片段</button>
+        <button class="btn btn-trim" id="trimBtn" style="display:none;">✂ 剪辑</button>
+        <button class="btn btn-trim" id="trimExportBtn" style="display:none;">📦 导出</button>
       </div>
     </div>
 
@@ -2524,40 +2523,30 @@ document.addEventListener('keydown', (e) => {
 // ═══════════════════════════════════════════
 let trimStartPct = 0, trimEndPct = 1;
 let trimDragging = null;
-let startMarked = false, endMarked = false;
+let trimActive = false;
 
 function showTrimHandles() {
-  document.getElementById('trimMarkBtn').style.display = '';
-  document.getElementById('trimEndBtn').style.display = 'none';
+  document.getElementById('trimBtn').style.display = '';
   document.getElementById('trimExportBtn').style.display = 'none';
   document.getElementById('trimStart').style.display = 'none';
   document.getElementById('trimEnd').style.display = 'none';
   document.getElementById('trimRange').style.display = 'none';
   document.getElementById('trimInfo').style.display = 'none';
-  startMarked = false; endMarked = false;
+  trimActive = false; trimStartPct = 0; trimEndPct = 1;
 }
 
 function updateTrimUI() {
-  const startEl = document.getElementById('trimStart');
-  const endEl = document.getElementById('trimEnd');
+  document.getElementById('trimStart').style.left = (trimStartPct * 100) + '%';
+  document.getElementById('trimEnd').style.left = (trimEndPct * 100) + '%';
   const range = document.getElementById('trimRange');
-  startEl.style.left = (trimStartPct * 100) + '%';
-  endEl.style.left = (trimEndPct * 100) + '%';
-  if (startMarked && endMarked) {
-    range.style.display = '';
-    range.style.left = (trimStartPct * 100) + '%';
-    range.style.width = ((trimEndPct - trimStartPct) * 100) + '%';
-  }
+  range.style.left = (trimStartPct * 100) + '%';
+  range.style.width = ((trimEndPct - trimStartPct) * 100) + '%';
 
   const dur = totalDuration || duration || 0;
   const info = document.getElementById('trimInfo');
-  if (dur > 0 && startMarked) {
+  if (dur > 0) {
     info.style.display = '';
-    if (endMarked) {
-      info.textContent = formatTime(trimStartPct * dur) + ' ~ ' + formatTime(trimEndPct * dur);
-    } else {
-      info.textContent = '起点 ' + formatTime(trimStartPct * dur);
-    }
+    info.textContent = formatTime(trimStartPct * dur) + ' ~ ' + formatTime(trimEndPct * dur);
   }
 }
 
@@ -2569,29 +2558,16 @@ function formatTime(sec) {
 function getMasterDur() { return totalDuration || duration || 0; }
 function getMasterVid() { return videos.front || Object.values(videos).find(v => v); }
 
-// "标记起点"
-document.getElementById('trimMarkBtn').onclick = () => {
-  const dur = getMasterDur(); const v = getMasterVid();
-  if (!dur || !v) { showToast('没有视频'); return; }
-  trimStartPct = v.currentTime / dur;
-  startMarked = true;
+// "剪辑" button — one click shows both lines
+document.getElementById('trimBtn').onclick = () => {
+  trimStartPct = 0; trimEndPct = 1;
+  trimActive = true;
   document.getElementById('trimStart').style.display = '';
-  document.getElementById('trimEndBtn').style.display = '';
-  updateTrimUI();
-  showToast('已标记起点，请标记终点或拖动蓝线调整');
-};
-
-// "标记终点"
-document.getElementById('trimEndBtn').onclick = () => {
-  const dur = getMasterDur(); const v = getMasterVid();
-  if (!dur || !v) { showToast('没有视频'); return; }
-  trimEndPct = v.currentTime / dur;
-  if (trimEndPct <= trimStartPct) { showToast('终点必须在起点之后'); return; }
-  endMarked = true;
   document.getElementById('trimEnd').style.display = '';
+  document.getElementById('trimRange').style.display = '';
   document.getElementById('trimExportBtn').style.display = '';
+  document.getElementById('trimBtn').style.display = 'none';
   updateTrimUI();
-  showToast('已标记终点，可拖动蓝线调整后导出');
 };
 
 // Dragging
@@ -2605,7 +2581,7 @@ document.addEventListener('mousemove', e => {
   if (!trimDragging) return;
   const rect = document.getElementById('timeline').getBoundingClientRect();
   const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-  if (trimDragging === 'trimStart') { if (!endMarked || pct < trimEndPct) trimStartPct = pct; }
+  if (trimDragging === 'trimStart') { if (pct < trimEndPct) trimStartPct = pct; }
   else { if (pct > trimStartPct) trimEndPct = pct; }
   updateTrimUI();
 });
@@ -2613,7 +2589,7 @@ document.addEventListener('touchmove', e => {
   if (!trimDragging) return;
   const rect = document.getElementById('timeline').getBoundingClientRect();
   const pct = Math.max(0, Math.min(1, (e.touches[0].clientX - rect.left) / rect.width));
-  if (trimDragging === 'trimStart') { if (!endMarked || pct < trimEndPct) trimStartPct = pct; }
+  if (trimDragging === 'trimStart') { if (pct < trimEndPct) trimStartPct = pct; }
   else { if (pct > trimStartPct) trimEndPct = pct; }
   updateTrimUI();
 });
@@ -2631,7 +2607,7 @@ document.getElementById('trimExportBtn').onclick = async () => {
   btn.disabled = true; btn.textContent = '⏳ 导出中...';
 
   const masterVid = getMasterVid();
-  if (!masterVid) { showToast('没有视频'); btn.disabled = false; btn.textContent = '📦 导出片段'; return; }
+  if (!masterVid) { showToast('没有视频'); btn.disabled = false; btn.textContent = '📦 导出'; return; }
 
   const oldTime = masterVid.currentTime;
   const wasPaused = masterVid.paused;
@@ -2685,7 +2661,7 @@ document.getElementById('trimExportBtn').onclick = async () => {
 
   masterVid.currentTime = oldTime;
   if (!wasPaused) masterVid.play();
-  btn.disabled = false; btn.textContent = '📦 导出片段';
+  btn.disabled = false; btn.textContent = '📦 导出';
   showToast('导出完成');
 };
 </script>
