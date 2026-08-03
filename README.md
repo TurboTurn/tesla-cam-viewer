@@ -2,6 +2,8 @@
 
 一个纯浏览器的 Tesla 行车记录仪视频查看器。无需后端，无需安装，打开网页就能浏览哨兵模式录像、手动保存视频和循环录像，支持 6 路摄像头同步播放。
 
+🔗 **在线体验：[turboturn.github.io/tesla-cam-viewer](https://turboturn.github.io/tesla-cam-viewer/)**
+
 [English Version](README_EN.md)
 
 ## 功能特性
