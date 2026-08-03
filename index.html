@@ -549,7 +549,8 @@ function trackClick(name, ext1) {
         <button class="btn btn-record" id="recordBtn">🎬 录制</button>
         <button class="btn btn-download" id="downloadEventBtn">⬇ 下载原始</button>
         <button class="btn btn-metadata" id="metadataBtn">ℹ 元数据</button>
-        <button class="btn btn-trim" id="trimExportBtn" style="display:none;">✂ 剪辑导出</button>
+        <button class="btn btn-trim" id="trimMarkBtn" style="display:none;">✂ 标记起点</button>
+        <button class="btn btn-trim" id="trimExportBtn" style="display:none;">📦 导出片段</button>
       </div>
     </div>
 
@@ -2519,30 +2520,33 @@ document.addEventListener('keydown', (e) => {
 // ═══════════════════════════════════════════
 let trimStartPct = 0, trimEndPct = 1;
 let trimDragging = null;
+let trimMarked = false; // has user clicked "标记起点"
 
 function showTrimHandles() {
-  document.getElementById('trimStart').style.display = '';
-  document.getElementById('trimEnd').style.display = '';
-  document.getElementById('trimExportBtn').style.display = '';
-  updateTrimUI();
+  document.getElementById('trimMarkBtn').style.display = '';
+  document.getElementById('trimMarkBtn').textContent = '✂ 标记起点';
+  document.getElementById('trimExportBtn').style.display = 'none';
+  document.getElementById('trimStart').style.display = 'none';
+  document.getElementById('trimEnd').style.display = 'none';
+  document.getElementById('trimRange').style.display = 'none';
+  document.getElementById('trimInfo').style.display = 'none';
+  trimMarked = false;
+  trimStartPct = 0;
 }
 
 function updateTrimUI() {
-  const start = document.getElementById('trimStart');
-  const end = document.getElementById('trimEnd');
+  const startEl = document.getElementById('trimStart');
   const range = document.getElementById('trimRange');
-  start.style.left = (trimStartPct * 100) + '%';
-  end.style.left = (trimEndPct * 100) + '%';
+  startEl.style.left = (trimStartPct * 100) + '%';
   range.style.left = (trimStartPct * 100) + '%';
-  range.style.width = ((trimEndPct - trimStartPct) * 100) + '%';
+  range.style.width = '4px';
 
   const dur = totalDuration || duration || 0;
   const info = document.getElementById('trimInfo');
-  info.style.display = dur > 0 ? '' : 'none';
-  info.textContent = formatTime(trimStartPct * dur) + ' ~ ' + formatTime(trimEndPct * dur);
-
-  const btn = document.getElementById('trimExportBtn');
-  btn.textContent = '✂ 导出 ' + formatTime((trimEndPct - trimStartPct) * dur);
+  if (dur > 0) {
+    info.style.display = '';
+    info.textContent = '起点 ' + formatTime(trimStartPct * dur);
+  }
 }
 
 function formatTime(sec) {
@@ -2550,56 +2554,66 @@ function formatTime(sec) {
   return m + ':' + String(s).padStart(2, '0');
 }
 
-['trimStart', 'trimEnd'].forEach(id => {
-  const el = document.getElementById(id);
-  el.addEventListener('mousedown', e => { e.preventDefault(); trimDragging = id; });
-  el.addEventListener('touchstart', e => { e.preventDefault(); trimDragging = id; });
-});
+// "标记起点" button
+document.getElementById('trimMarkBtn').onclick = () => {
+  if (!trimMarked) {
+    // First click: set start point at current position, show handle
+    const dur = totalDuration || duration || 0;
+    const masterVid = videos.front || Object.values(videos).find(v => v);
+    if (!dur || !masterVid) { showToast('没有视频'); return; }
+    trimStartPct = masterVid.currentTime / dur;
+    trimMarked = true;
+    document.getElementById('trimStart').style.display = '';
+    document.getElementById('trimRange').style.display = '';
+    document.getElementById('trimExportBtn').style.display = '';
+    document.getElementById('trimMarkBtn').textContent = '↩ 重新标记';
+    updateTrimUI();
+    showToast('拖动蓝色圆点调整起点位置');
+  } else {
+    // Reset
+    showTrimHandles();
+  }
+};
+
+// Dragging
+const trimStartEl = document.getElementById('trimStart');
+trimStartEl.addEventListener('mousedown', e => { e.preventDefault(); trimDragging = 'start'; });
+trimStartEl.addEventListener('touchstart', e => { e.preventDefault(); trimDragging = 'start'; });
 
 document.addEventListener('mousemove', e => {
   if (!trimDragging) return;
   const tl = document.getElementById('timeline');
   const rect = tl.getBoundingClientRect();
-  let pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-  if (trimDragging === 'trimStart') { trimStartPct = Math.min(pct, trimEndPct - 0.01); }
-  else { trimEndPct = Math.max(pct, trimStartPct + 0.01); }
+  trimStartPct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
   updateTrimUI();
 });
-
 document.addEventListener('touchmove', e => {
   if (!trimDragging) return;
   const tl = document.getElementById('timeline');
   const rect = tl.getBoundingClientRect();
-  let pct = Math.max(0, Math.min(1, (e.touches[0].clientX - rect.left) / rect.width));
-  if (trimDragging === 'trimStart') { trimStartPct = Math.min(pct, trimEndPct - 0.01); }
-  else { trimEndPct = Math.max(pct, trimStartPct + 0.01); }
+  trimStartPct = Math.max(0, Math.min(1, (e.touches[0].clientX - rect.left) / rect.width));
   updateTrimUI();
 });
-
 document.addEventListener('mouseup', () => { trimDragging = null; });
 document.addEventListener('touchend', () => { trimDragging = null; });
 
+// Export
 document.getElementById('trimExportBtn').onclick = async () => {
   const btn = document.getElementById('trimExportBtn');
   btn.disabled = true;
-  btn.textContent = '⏳ 处理中...';
+  btn.textContent = '⏳ 导出中...';
   const dur = totalDuration || duration || 0;
   const startSec = trimStartPct * dur;
-  const endSec = trimEndPct * dur;
-  const clipDur = endSec - startSec;
-  if (clipDur < 0.5) { showToast('选择范围太短'); btn.disabled = false; updateTrimUI(); return; }
+  const endSec = dur;
+  if (endSec - startSec < 0.5) { showToast('片段太短'); btn.disabled = false; btn.textContent = '📦 导出片段'; return; }
 
-  // Seek master to start
   const masterVid = videos.front || Object.values(videos).find(v => v);
-  if (!masterVid) { showToast('没有视频'); btn.disabled = false; updateTrimUI(); return; }
+  if (!masterVid) { showToast('没有视频'); btn.disabled = false; btn.textContent = '📦 导出片段'; return; }
 
   const oldTime = masterVid.currentTime;
-  const oldRate = masterVid.playbackRate;
   const wasPaused = masterVid.paused;
   masterVid.pause();
-  masterVid.playbackRate = 4;
 
-  // Setup canvas
   const canvas = document.createElement('canvas');
   const isSingle = currentView !== 'all';
   if (isSingle && videos[currentView]) {
@@ -2610,35 +2624,28 @@ document.getElementById('trimExportBtn').onclick = async () => {
     canvas.width = 1280; canvas.height = 720;
   }
   const ctx = canvas.getContext('2d');
-
-  // Positions for 6-camera grid
   const pos = {
     front:{x:0,y:0,w:640,h:360}, back:{x:640,y:0,w:640,h:360},
     left_pillar:{x:0,y:360,w:640,h:360}, right_pillar:{x:640,y:360,w:640,h:360},
     left_repeater:{x:0,y:720,w:640,h:360}, right_repeater:{x:640,y:720,w:640,h:360}
   };
 
-  const stream = canvas.captureStream(10); // 10 FPS for clip export
+  const stream = canvas.captureStream(10);
   const chunks = [];
   const mr = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm' });
   mr.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
-
   const done = new Promise(resolve => { mr.onstop = resolve; });
   mr.start();
 
-  // Capture frames
   const fps = 10;
-  const totalFrames = Math.ceil(clipDur * fps);
-  const frameInterval = 1 / fps;
-
+  const totalFrames = Math.ceil((endSec - startSec) * fps);
   for (let i = 0; i < totalFrames; i++) {
-    const t = startSec + i * frameInterval;
+    const t = startSec + i / fps;
     masterVid.currentTime = t;
-    await new Promise(r => { masterVid.onseeked = r; setTimeout(r, 200); }); // wait for seek
+    await new Promise(r => { masterVid.onseeked = r; setTimeout(r, 300); });
 
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
     if (isSingle && videos[currentView]) {
       const v = videos[currentView];
       if (v.videoWidth) ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
@@ -2656,21 +2663,18 @@ document.getElementById('trimExportBtn').onclick = async () => {
   mr.stop();
   await done;
 
-  // Download
   const blob = new Blob(chunks, { type: 'video/webm' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = 'clip_' + formatTime(startSec).replace(':','-') + '_' + formatTime(endSec).replace(':','-') + '.webm';
+  a.href = url; a.download = 'clip_' + formatTime(startSec).replace(':','-') + '.webm';
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 3000);
 
-  // Restore
-  masterVid.playbackRate = oldRate;
   masterVid.currentTime = oldTime;
   if (!wasPaused) masterVid.play();
   btn.disabled = false;
-  updateTrimUI();
-  showToast('剪辑已导出');
+  btn.textContent = '📦 导出片段';
+  showToast('导出完成');
 };
 </script>
 </body>
