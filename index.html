@@ -1,0 +1,1980 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tesla 监控视频查看器</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg:#1a1d24; --panel:#22262e; --panel2:#2a2f38; --border:#363b45; --accent:#e8210f;
+  --accent2:#ff5252; --text:#dfe4ea; --dim:#7a8290; --hover:#2c313a;
+  --blue:#4a9eff; --radius:8px;
+}
+body { background:var(--bg); color:var(--text); font-family:-apple-system,system-ui,'Segoe UI',sans-serif; overflow:hidden; height:100vh; height:100dvh; }
+.app { display:flex; height:100vh; height:100dvh; overflow:hidden; }
+
+/* Sidebar */
+.sidebar { width:280px; min-width:280px; background:var(--panel); border-right:1px solid var(--border); display:flex; flex-direction:column; }
+.sidebar-header { padding:16px; border-bottom:1px solid var(--border); }
+.sidebar-header h1 { font-size:16px; font-weight:600; margin-bottom:12px; }
+.sidebar-header h1 span { color:var(--accent); }
+.btn { display:inline-block; padding:8px 14px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius); font-size:13px; cursor:pointer; text-align:center; transition:opacity .15s; }
+.btn:hover { opacity:.85; }
+.btn-secondary { background:var(--panel2); }
+.btn:disabled { opacity:.4; cursor:default; }
+
+.upload-zone { padding:12px 16px; border-bottom:1px solid var(--border); }
+.upload-zone p { font-size:12px; color:var(--dim); margin-bottom:8px; line-height:1.5; }
+.upload-btns { display:flex; gap:8px; flex-wrap:wrap; }
+
+.event-list { flex:1; overflow-y:auto; }
+.event-item { padding:10px 16px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .12s; display:flex; align-items:center; gap:10px; }
+.event-item:hover { background:var(--hover); }
+.seg-item:hover { background:var(--panel2); }
+.seg-separator { padding:6px 14px; text-align:center; color:var(--dim); font-size:11px; }
+.event-item.active { background:var(--accent); color:#fff; }
+.event-item.active .ev-type-badge { opacity:1; }
+.event-item .ev-icon { font-size:16px; flex-shrink:0; width:20px; text-align:center; }
+.event-item .ev-info { flex:1; min-width:0; }
+.event-item .ev-time { font-size:13px; font-weight:500; }
+.event-item .ev-type-badge { display:inline-block; font-size:10px; padding:1px 6px; border-radius:8px; margin-top:3px; font-weight:500; }
+.event-item .ev-segs { font-size:11px; color:var(--dim); flex-shrink:0; }
+.event-item .ev-arrow { display:inline-block; transition:transform .2s; font-size:10px; }
+.event-item.collapsed .ev-arrow { transform:rotate(-90deg); }
+.event-item.active .ev-segs { color:rgba(255,255,255,.8); }
+/* Type badges */
+.ev-type-sentry { background:rgba(255,152,0,.15); color:#FF9800; border:1px solid rgba(255,152,0,.3); }
+.ev-type-saved { background:rgba(0,188,212,.12); color:#4DD0E1; border:1px solid rgba(0,188,212,.3); }
+.ev-type-recent { background:rgba(96,125,139,.15); color:#90a4ae; border:1px solid rgba(96,125,139,.3); }
+.event-item.active .ev-type-sentry,
+.event-item.active .ev-type-saved,
+.event-item.active .ev-type-recent { background:rgba(255,255,255,.2); color:#fff; border-color:rgba(255,255,255,.4); }
+
+.seg-list { padding:4px 0; }
+.seg-item { padding:6px 16px 6px 24px; font-size:12px; color:var(--dim); cursor:pointer; border-left:2px solid transparent; }
+.seg-item:hover { background:var(--hover); color:var(--text); }
+.seg-item.active { border-left-color:var(--accent); color:var(--accent); }
+
+/* Main area */
+.main { flex:1; display:flex; flex-direction:column; min-width:0; overflow:hidden; }
+.topbar { padding:10px 20px; background:var(--panel); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; min-height:50px; flex-shrink:0; gap:8px; }
+.topbar-left { display:flex; align-items:center; gap:8px; min-width:0; flex:1; }
+.topbar .title { font-size:14px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.topbar .meta { font-size:12px; color:var(--dim); white-space:nowrap; flex-shrink:0; }
+
+.video-grid { flex:1; display:grid; gap:0; background:#000; position:relative; min-height:0; overflow:hidden; width:100%; height:100%; }
+.video-grid.grid-view { grid-template-columns:repeat(2, 1fr); grid-template-rows:repeat(3, 1fr); max-width:calc(100vh * 2 * 1448 / (3 * 938)); max-height:100%; margin:0 auto; }
+.video-grid.dual-view { grid-template-columns:repeat(2, 1fr); grid-template-rows:1fr; max-width:calc(100vh * 1448 / 938 * 2); max-height:100%; margin:0 auto; }
+.video-grid.quad-view { grid-template-columns:repeat(2, 1fr); grid-template-rows:repeat(2, 1fr); max-width:calc(100vh * 1448 / 938); max-height:100%; margin:0 auto; }
+.video-grid.single-view { grid-template-columns:1fr; grid-template-rows:1fr; max-height:100%; margin:0 auto; }
+.video-cell { position:relative; background:#000; overflow:hidden; }
+.video-cell video { width:100%; height:100%; object-fit:contain; }
+.video-cell .cam-label { position:absolute; top:8px; left:8px; background:rgba(0,0,0,.65); color:#fff; font-size:11px; padding:3px 8px; border-radius:4px; pointer-events:none; }
+.video-cell .no-signal { color:#555; font-size:13px; }
+.video-cell::after { content:''; position:absolute; inset:0; pointer-events:none; box-shadow:inset 0 0 0 1px rgba(255,255,255,.04); }
+
+/* Controls */
+.controls { padding:12px 20px; background:var(--panel); border-top:1px solid var(--border); flex-shrink:0; }
+.timeline-wrap { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.play-btn { width:36px; height:36px; border-radius:50%; border:none; background:var(--accent); color:#fff; font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.play-btn:hover { opacity:.85; }
+.timeline { flex:1; height:6px; background:var(--panel2); border-radius:3px; position:relative; cursor:pointer; }
+.timeline .progress { height:100%; background:var(--accent); border-radius:3px; width:0%; }
+.timeline .buffer { position:absolute; height:100%; background:rgba(255,255,255,.08); border-radius:3px; width:0%; }
+.time-display { font-size:12px; color:var(--dim); min-width:90px; text-align:right; font-variant-numeric:tabular-nums; }
+.speed-select { background:var(--panel2); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:12px; cursor:pointer; flex-shrink:0; }
+
+/* Camera tabs */
+.cam-tabs { display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; }
+.cam-tab { padding:5px 12px; background:var(--panel2); border:1px solid var(--border); border-radius:16px; color:var(--dim); font-size:12px; cursor:pointer; transition:all .15s; white-space:nowrap; }
+.cam-tab:hover { color:var(--text); border-color:#4a4f5a; }
+.cam-tab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+.btn-secondary.recording { background:var(--accent); color:#fff; border-color:var(--accent); animation:pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.6;} }
+
+.action-bar { display:flex; gap:10px; flex-wrap:wrap; }
+.action-bar .btn { font-size:12px; padding:7px 12px; }
+
+/* Empty state */
+.empty-state { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--dim); }
+.empty-state .icon { font-size:48px; margin-bottom:16px; opacity:.3; }
+.empty-state p { font-size:14px; line-height:1.6; text-align:center; max-width:400px; }
+
+/* Toast */
+.toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--panel); border:1px solid var(--border); color:var(--text); padding:10px 20px; border-radius:var(--radius); font-size:13px; z-index:1000; opacity:0; transition:opacity .2s; pointer-events:none; box-shadow:0 4px 20px rgba(0,0,0,.4); }
+.toast.show { opacity:1; }
+
+/* Loading */
+.loading { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:var(--dim); font-size:14px; }
+
+
+/* Timestamp overlay */
+.ts-overlay { position:absolute; bottom:8px; right:8px; background:rgba(0,0,0,.7); color:#fff; font-size:12px; padding:4px 10px; border-radius:4px; pointer-events:none; font-variant-numeric:tabular-nums; z-index:5; white-space:nowrap; }
+
+/* Metadata */
+.metadata-panel { position:absolute; top:50px; right:20px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:14px; font-size:12px; max-width:320px; z-index:10; display:none; max-height:calc(100vh - 120px); overflow-y:auto; box-shadow:0 4px 24px rgba(0,0,0,.4); }
+.metadata-panel.show { display:block; }
+.metadata-panel .md-row { display:flex; justify-content:space-between; margin-bottom:4px; }
+.metadata-panel .md-label { color:var(--dim); }
+.metadata-panel h3 { font-size:13px; margin-bottom:8px; }
+.metadata-panel .md-map { margin-top:10px; border-radius:6px; overflow:hidden; border:1px solid var(--border); }
+.metadata-panel .md-map #miniMap { width:100%; height:180px; background:#1a1a1a; }
+.metadata-panel .md-map-link { margin-top:6px; font-size:11px; text-align:center; }
+.metadata-panel .md-map-link a { color:var(--accent); text-decoration:none; }
+
+/* Responsive */
+@media (max-width:768px) {
+  body { overflow:hidden; }
+  .app { height:100vh; height:100dvh; flex-direction:column; overflow:hidden; }
+  /* Sidebar becomes slide-out drawer */
+  .sidebar { position:fixed; top:0; left:0; width:80%; max-width:300px; height:100vh; height:100dvh; max-height:100vh; z-index:200; transform:translateX(-100%); transition:transform .25s ease; border-right:1px solid var(--border); }
+  .sidebar.open { transform:translateX(0); }
+  /* Show toggle button on mobile — inside topbar */
+  .sidebar-toggle { display:block !important; }
+  /* Backdrop when sidebar open */
+  .sidebar-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:150; }
+  .sidebar-backdrop.show { display:block; }
+  /* Main fills full screen */
+  .main { flex:1; min-height:0; height:100vh; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
+  /* Video grid — scrollable, takes remaining space after topbar+controls */
+  .video-grid { flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .video-grid.grid-view { grid-template-columns:1fr 1fr; grid-template-rows:repeat(3, minmax(100px, 1fr)); max-width:100%; }
+  .video-grid.single-view { grid-template-columns:1fr; grid-template-rows:1fr; }
+  .video-cell video { object-fit:contain; }
+  /* Controls — pinned at bottom, never pushed off */
+  .controls { padding:6px 10px; flex-shrink:0; }
+  .timeline-wrap { gap:6px; margin-bottom:6px; }
+  .time-display { min-width:68px; font-size:10px; }
+  .play-btn { width:30px; height:30px; font-size:11px; }
+  .speed-select { padding:3px 6px; font-size:10px; }
+  .cam-tabs { gap:4px; margin-bottom:6px; overflow-x:auto; flex-wrap:nowrap; -webkit-overflow-scrolling:touch; }
+  .cam-tab { padding:4px 8px; font-size:10px; flex-shrink:0; }
+  .action-bar { gap:5px; }
+  .action-bar .btn { font-size:10px; padding:5px 7px; }
+  /* Topbar */
+  .topbar { padding:8px 12px; min-height:44px; gap:6px; flex-shrink:0; }
+  .topbar .title { font-size:15px; }
+  .topbar .meta { font-size:11px; max-width:35%; overflow:hidden; text-overflow:ellipsis; }
+  .sidebar-toggle { font-size:18px; padding:6px 12px; }
+  /* Sidebar header */
+  .sidebar-header { padding:12px 16px; flex-shrink:0; }
+  .sidebar-header h1 { font-size:16px; margin-bottom:8px; }
+  .upload-zone { padding:10px 16px; }
+  .upload-zone p { font-size:12px; margin-bottom:8px; }
+  .upload-btns { flex-direction:column; }
+  .upload-btns .btn { width:100%; }
+  .btn { padding:8px 14px; font-size:13px; }
+  /* Compact event items on mobile */
+  .event-item { padding:10px 14px; }
+  .event-item .ev-time { font-size:13px; }
+  .event-item .ev-type-badge { font-size:10px; padding:2px 6px; }
+  .event-item .ev-segs { font-size:11px; }
+  .seg-item { font-size:12px; padding:8px 16px 8px 32px; }
+  /* Sidebar footer */
+  .sidebar-footer { padding:12px 14px; }
+  .btn-tip { font-size:15px; }
+  /* Controls */
+  .controls { padding:8px 10px; flex-shrink:0; }
+  .action-bar .btn { font-size:11px; padding:6px 10px; }
+  .cam-tab { padding:5px 10px; font-size:11px; flex-shrink:0; }
+
+}
+.sidebar-toggle { display:none; background:var(--panel2); border:1px solid var(--border); color:var(--text); padding:5px 10px; border-radius:6px; font-size:15px; cursor:pointer; line-height:1; flex-shrink:0; }
+
+/* Sidebar footer — tip button */
+.sidebar-footer { padding:12px 16px; border-top:1px solid var(--border); margin-top:auto; }
+.btn-tip { width:100%; background:linear-gradient(135deg,#f7971e,#ffd200); color:#1a1a1a; font-weight:600; font-size:14px; }
+.btn-tip:hover { opacity:.9; }
+
+/* Tip modal */
+.tip-overlay { position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:300; display:none; align-items:center; justify-content:center; }
+.tip-overlay.show { display:flex; }
+.tip-modal { background:var(--panel); border-radius:12px; padding:32px; max-width:520px; width:90%; text-align:center; box-shadow:0 8px 40px rgba(0,0,0,.4); }
+.tip-modal h3 { font-size:18px; margin-bottom:4px; color:var(--text); }
+.tip-modal .tip-sub { font-size:14px; color:var(--dim); margin-bottom:22px; }
+.tip-modal .qr-row { display:flex; gap:100px; justify-content:center; }
+.tip-modal .qr-item { flex:1; max-width:200px; }
+.tip-modal .qr-item img { width:100%; border-radius:8px; background:#fff; padding:8px; }
+.tip-modal .qr-item .qr-label { font-size:12px; color:var(--dim); margin-top:6px; }
+.tip-modal .btn-close-tip { margin-top:18px; background:var(--panel2); color:var(--dim); border:1px solid var(--border); padding:6px 24px; border-radius:6px; cursor:pointer; font-size:13px; }
+.tip-modal .btn-close-tip:hover { color:var(--text); }
+
+#fileInput, #folderInput { display:none; }
+</style>
+<!-- 腾讯云 RUM 前端性能监控 -->
+<script src="https://tam.cdn-go.cn/aegis-sdk/latest/aegis.min.js"></script>
+<script>
+if (typeof Aegis === 'function') {
+  var aegis = new Aegis({
+    id: 'RrlqGSPbmrgQWn5GD7',
+    reportApiSpeed: true,
+    reportAssetSpeed: true,
+    spa: false,
+    hostUrl: 'https://rumt-zh.com'
+  });
+}
+// 埋点辅助
+function trackClick(name, ext1) {
+  if (typeof aegis !== 'undefined' && aegis.reportEvent) {
+    aegis.reportEvent({ name: name, ext1: ext1 || '' });
+  }
+}
+</script>
+</head>
+<body>
+<div class="app">
+  <!-- Backdrop for mobile sidebar -->
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h1><span>⚡</span> Tesla 监控查看器</h1>
+      <div class="upload-zone">
+        <p id="uploadHint">电脑端：选择 TeslaCam 文件夹<br>手机端：选择文件夹或多个视频文件</p>
+        <div class="upload-btns">
+          <button class="btn" id="selectBtn">选择文件夹</button>
+          <button class="btn btn-secondary" id="selectFileBtn">选视频文件</button>
+        </div>
+      </div>
+    </div>
+    <div class="event-list" id="eventList">
+      <div style="padding:20px 16px;color:var(--dim);font-size:13px;text-align:center;">
+        请选择 TeslaCam 文件夹或视频文件
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <button class="btn btn-tip" id="tipBtn">💰 打赏作者</button>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="sidebar-toggle" id="sidebarToggle">☰</button>
+        <div class="title" id="currentTitle">Tesla 监控查看器</div>
+      </div>
+      <div class="meta" id="currentMeta">请从左侧选择事件</div>
+    </div>
+
+    <div class="video-grid" id="videoGrid">
+      <div class="empty-state" id="emptyState">
+        <div class="icon">🎥</div>
+        <p>选择 TeslaCam 文件夹后<br>事件会出现在左侧列表</p>
+      </div>
+    </div>
+
+    <div class="controls" id="controls" style="display:none;">
+      <div class="timeline-wrap">
+        <button class="play-btn" id="playBtn">▶</button>
+        <div class="timeline" id="timeline">
+          <div class="buffer" id="bufferBar"></div>
+          <div class="progress" id="progressBar"></div>
+        </div>
+        <div class="time-display" id="timeDisplay">00:00 / 00:00</div>
+        <select class="speed-select" id="speedSelect">
+          <option value="0.25">0.25x</option>
+          <option value="0.5">0.5x</option>
+          <option value="1" selected>1x</option>
+          <option value="1.5">1.5x</option>
+          <option value="2">2x</option>
+          <option value="4">4x</option>
+        </select>
+      </div>
+      <div class="cam-tabs" id="camTabs">
+        <button class="cam-tab active" data-cam="all">⊞ 全部</button>
+        <button class="cam-tab" data-cam="front">🎥 前摄</button>
+        <button class="cam-tab" data-cam="back">🎞 后摄</button>
+        <button class="cam-tab" data-cam="left_pillar">↖ 左侧前</button>
+        <button class="cam-tab" data-cam="right_pillar">↗ 右侧前</button>
+        <button class="cam-tab" data-cam="left_repeater">↙ 左侧后</button>
+        <button class="cam-tab" data-cam="right_repeater">↘ 右侧后</button>
+        <span style="width:1px;background:var(--border);margin:0 4px;flex-shrink:0;"></span>
+        <button class="cam-tab layout-tab" data-layout="dual-fb">⬛ 前后</button>
+        <button class="cam-tab layout-tab" data-layout="quad-front">🔲 前后+左前右前</button>
+        <button class="cam-tab layout-tab" data-layout="quad-rear">🔲 前后+左后右后</button>
+      </div>
+      <div class="action-bar">
+        <button class="btn btn-secondary" id="screenshotBtn">📸 截图</button>
+        <button class="btn btn-secondary" id="recordBtn">🎬 录制</button>
+        <button class="btn btn-secondary" id="downloadEventBtn">⬇ 下载原始</button>
+        <button class="btn btn-secondary" id="metadataBtn">ℹ 元数据</button>
+      </div>
+    </div>
+
+    <div class="metadata-panel" id="metadataPanel">
+      <h3>事件元数据</h3>
+      <div id="metadataContent"></div>
+      <div class="md-map" id="mapContainer" style="display:none;">
+        <div id="miniMap"></div>
+        <div class="md-map-link"><a id="mapLink" href="#" target="_blank">在高德地图中打开</a></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="folderInput" webkitdirectory directory multiple>
+<input type="file" id="fileInput" multiple accept="video/*">
+
+<div class="toast" id="toast"></div>
+
+<!-- Tip modal -->
+<div class="tip-overlay" id="tipOverlay">
+  <div class="tip-modal">
+    <h3>☕ 打赏作者</h3>
+    <p class="tip-sub">如果你觉得这个工具对你有帮助，欢迎打赏支持！</p>
+    <div class="qr-row">
+      <div class="qr-item">
+        <img src="wechat-qr.png" alt="微信收款码" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+        <div style="display:none;width:100%;aspect-ratio:1;background:var(--panel2);border-radius:8px;display:none;align-items:center;justify-content:center;color:var(--dim);font-size:12px;">微信<br>收款码</div>
+        <div class="qr-label">微信</div>
+      </div>
+      <div class="qr-item">
+        <img src="alipay-qr.png" alt="支付宝收款码" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+        <div style="display:none;width:100%;aspect-ratio:1;background:var(--panel2);border-radius:8px;align-items:center;justify-content:center;color:var(--dim);font-size:12px;">支付宝<br>收款码</div>
+        <div class="qr-label">支付宝</div>
+      </div>
+    </div>
+    <button class="btn-close-tip" onclick="document.getElementById('tipOverlay').classList.remove('show')">关闭</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// State
+// ═══════════════════════════════════════════
+const CAMERAS = ['front', 'back', 'left_pillar', 'left_repeater', 'right_pillar', 'right_repeater'];
+const CAM_LABELS = {
+  front:'前摄', back:'后摄',
+  left_pillar:'左侧前', left_repeater:'左侧后',
+  right_pillar:'右侧前', right_repeater:'右侧后'
+};
+const CAM_LAYOUT = [
+  'front', 'back',
+  'left_pillar', 'right_pillar',
+  'left_repeater', 'right_repeater'
+];
+
+let events = []; // [{folder, name, segments:[{name, files:{front:File, back:File, ...}}]}]
+let currentEvent = null;
+let currentSegment = null;
+let videos = {}; // {front:HTMLVideoElement, ...}
+let isPlaying = false;
+let duration = 0;
+let currentTime = 0;
+let isSeeking = false;
+let seekPending = 0;
+let playAfterSeek = false;
+let endedHandled = false; // moved to global so src-swap can reset
+let currentView = 'all'; // 'all' or specific camera name
+let currentSegIdx = 0;
+let segDurations = []; // duration of each segment
+let segOffsets = []; // start offset of each segment in total timeline
+let totalDuration = 0; // sum of all segment durations
+
+// ═══════════════════════════════════════════
+// File detection helpers (case-insensitive, flexible extension)
+// ═══════════════════════════════════════════
+const CAM_PATTERNS = [
+  ['front', /[-_]front\b/i],
+  ['back', /[-_]back\b/i],
+  ['left_pillar', /[-_]left_pillar\b/i],
+  ['right_pillar', /[-_]right_pillar\b/i],
+  ['left_repeater', /[-_]left_repeater\b/i],
+  ['right_repeater', /[-_]right_repeater\b/i],
+];
+
+function detectCam(filename) {
+  const lower = filename.toLowerCase();
+  for (const [cam, regex] of CAM_PATTERNS) {
+    if (regex.test(lower)) return cam;
+  }
+  return null;
+}
+
+function detectTimestamp(filename) {
+  const m = filename.match(/(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})/);
+  return m ? m[1] : null;
+}
+
+// ═══════════════════════════════════════════
+// File selection
+// ═══════════════════════════════════════════
+const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+const folderInput = document.getElementById('folderInput');
+const fileInput = document.getElementById('fileInput');
+const selectBtn = document.getElementById('selectBtn');
+const selectFileBtn = document.getElementById('selectFileBtn');
+
+if (isMobile) {
+  document.getElementById('uploadHint').innerHTML = '选择 TeslaCam 文件夹<br>或直接选择多个视频文件';
+}
+
+// Check if File System Access API is available (Chrome/Edge 86+)
+const hasFSAccess = 'showDirectoryPicker' in window;
+let savedDirHandle = null;
+
+// Restore saved directory on page load (Chrome/Edge with File System Access API)
+restoreDirHandle();
+
+// Try to restore saved directory handle on page load
+// Note: requestPermission must be in user gesture, so we just check if handle exists
+async function restoreDirHandle() {
+  if (!hasFSAccess) return;
+  try {
+    const db = await openDB();
+    const tx = db.transaction('handles', 'readonly');
+    const stored = await new Promise((resolve, reject) => {
+      const r = tx.objectStore('handles').get('dirHandle');
+      r.onsuccess = () => resolve(r.result);
+      r.onerror = () => reject(r.error);
+    });
+    db.close();
+    console.log('[restore] stored:', stored ? stored.handle?.name : 'none');
+    if (stored && stored.handle) {
+      const perm = await stored.handle.queryPermission({ mode: 'read' });
+      console.log('[restore] permission:', perm);
+      if (perm === 'granted') {
+        savedDirHandle = stored.handle;
+        const files = await collectDirFiles(savedDirHandle);
+        console.log('[restore] files found:', files.length);
+        if (files.length) {
+          events = parseFolderFiles(files);
+          console.log('[restore] events parsed:', events.length);
+          renderEventList();
+        }
+      } else {
+        savedDirHandle = stored.handle;
+        console.log('[restore] showing restore button');
+        showRestoreButton();
+      }
+    }
+  } catch(e) {
+    console.warn('[restore] failed:', e);
+  }
+}
+
+function showRestoreButton() {
+  const list = document.getElementById('eventList');
+  list.innerHTML = '';
+  const btn = document.createElement('button');
+  btn.className = 'btn';
+  btn.style.cssText = 'display:block;margin:20px auto;padding:10px 20px;font-size:13px;';
+  btn.textContent = '🔄 恢复上次文件夹';
+  btn.onclick = async () => {
+    try {
+      const result = await savedDirHandle.requestPermission({ mode: 'read' });
+      if (result === 'granted') {
+        const files = await collectDirFiles(savedDirHandle);
+        if (files.length) {
+          events = parseFolderFiles(files);
+          renderEventList();
+          showToast(`已恢复 ${events.length} 个事件`);
+        }
+      }
+    } catch(e) {
+      console.warn('Permission denied:', e);
+    }
+  };
+  list.appendChild(btn);
+}
+
+// Simple IndexedDB wrapper for storing dirHandle
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('tesla-cam-viewer', 1);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('handles')) {
+        db.createObjectStore('handles');
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function saveDirHandle(handle) {
+  try {
+    const db = await openDB();
+    const tx = db.transaction('handles', 'readwrite');
+    tx.objectStore('handles').put({ handle }, 'dirHandle');
+    await new Promise((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+    db.close();
+    console.log('[save] dirHandle saved to IndexedDB');
+  } catch(e) {
+    console.warn('[save] Failed to save dir handle:', e);
+  }
+}
+
+selectBtn.onclick = async () => {
+  trackClick('选择文件夹');
+  if (hasFSAccess) {
+    try {
+      const dirHandle = await window.showDirectoryPicker();
+      savedDirHandle = dirHandle;
+      await saveDirHandle(dirHandle);
+      console.log('[select] saved dirHandle:', dirHandle.name);
+      const files = await collectDirFiles(dirHandle);
+      console.log('[select] files found:', files.length);
+      if (!files.length) {
+        showToast('文件夹中没有视频文件');
+        return;
+      }
+      events = parseFolderFiles(files);
+      renderEventList();
+      showToast(`已加载 ${events.length} 个事件，共 ${events.reduce((s,e)=>s+e.segments.length,0)} 段视频`);
+    } catch(e) {
+      if (e.name !== 'AbortError') console.warn('FS Access error:', e);
+    }
+  } else {
+    folderInput.click();
+  }
+};
+
+document.getElementById('selectFileBtn').onclick = () => {
+  trackClick('选择视频文件');
+  fileInput.click();
+};
+
+// Collect files from File System Access API directory handle
+// Returns array of File objects with webkitRelativePath set
+async function collectDirFiles(dirHandle, basePath) {
+  basePath = basePath || dirHandle.name;
+  const files = [];
+  for await (const entry of dirHandle.values()) {
+    const entryPath = basePath + '/' + entry.name;
+    if (entry.kind === 'directory') {
+      // Recurse into subdirectory
+      const subFiles = await collectDirFiles(entry, entryPath);
+      files.push(...subFiles);
+    } else if (entry.kind === 'file') {
+      // Get File object
+      const file = await entry.getFile();
+      // Attach relative path for compatibility with parseFolderFiles
+      Object.defineProperty(file, 'webkitRelativePath', {
+        value: entryPath,
+        writable: false,
+        configurable: true
+      });
+      files.push(file);
+    }
+  }
+  return files;
+}
+
+folderInput.onchange = (e) => {
+  trackClick('文件夹加载', e.target.files.length + '');
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+  events = parseFolderFiles(files);
+  renderEventList();
+  showToast(`已加载 ${events.length} 个事件，共 ${events.reduce((s,e)=>s+e.segments.length,0)} 段视频`);
+};
+
+fileInput.onchange = (e) => {
+  trackClick('视频文件加载', e.target.files.length + '');
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+  // Group by timestamp prefix (strip -camera.mp4)
+  const groups = {};
+  for (const f of files) {
+    // Skip macOS hidden files
+    if (f.name.startsWith('._') || f.name.startsWith('.')) continue;
+    const cam = detectCam(f.name);
+    const prefix = detectTimestamp(f.name);
+    if (cam && prefix) {
+      if (!groups[prefix]) groups[prefix] = {};
+      groups[prefix][cam] = f;
+    }
+  }
+  // Build single event with segments
+  const segments = Object.keys(groups).sort().map(prefix => ({
+    name: prefix,
+    files: groups[prefix]
+  }));
+  events = [{
+    name: '手动选择',
+    folder: '',
+    segments: segments
+  }];
+  renderEventList();
+  showToast(`已加载 ${segments.length} 段视频`);
+};
+
+// ═══════════════════════════════════════════
+// Parse folder structure
+// ═══════════════════════════════════════════
+function parseFolderFiles(files) {
+  // TeslaCam/SentryClips/2024-01-15_10-23-45/2024-01-15_10-13-43-front.mp4
+  // TeslaCam/SavedClips/.../...
+  // TeslaCam/RecentClips/2024-01-15_10-13-43-front.mp4
+  const eventMap = {}; // {eventFolder: {name, segments:{segPrefix: {files:{}}}}}
+  let orphanMetadata = null; // event.json files that didn't match any event yet
+
+  for (const f of files) {
+    // Skip macOS hidden files (._ prefixed) and other dot-files
+    if (f.name.startsWith('._') || f.name.startsWith('.')) continue;
+
+    const path = f.webkitRelativePath || f.name;
+    const parts = path.split('/');
+
+    // Detect camera from filename
+    const cam = detectCam(f.name);
+    if (!cam) {
+      // Check for json metadata — try to match to existing video event by folder name
+      if (f.name === 'event.json') {
+        const eventFolder = parts[parts.length - 2];
+        // If this folder already has video segments, attach metadata
+        if (eventMap[eventFolder]) {
+          eventMap[eventFolder].metadata = f;
+        } else {
+          // Store in a temp map — will try to match later after all videos processed
+          if (!orphanMetadata) orphanMetadata = {};
+          orphanMetadata[eventFolder] = f;
+        }
+      }
+      continue;
+    }
+
+    const segPrefix = detectTimestamp(f.name);
+    if (!segPrefix) continue;
+
+    // Determine event folder (parent of the video file)
+    // Could be SentryClips/date_folder/segPrefix-camera.mp4
+    // or RecentClips/segPrefix-camera.mp4 (no event folder)
+    let eventFolder;
+    let eventType = '';
+
+    const sentryIdx = parts.indexOf('SentryClips');
+    const savedIdx = parts.indexOf('SavedClips');
+    const recentIdx = parts.indexOf('RecentClips');
+
+    if (sentryIdx >= 0) {
+      eventFolder = parts[sentryIdx + 1] || 'Sentry';
+      eventType = '🔔 哨兵';
+    } else if (savedIdx >= 0) {
+      eventFolder = parts[savedIdx + 1] || 'Saved';
+      eventType = '⭐ 手动保存';
+    } else if (recentIdx >= 0) {
+      // RecentClips: group continuous clips into one event by date
+      // e.g. 2026-07-30_22-23-28 → event "2026-07-30 22:23"
+      const datePart = segPrefix.split('_')[0]; // 2026-07-30
+      eventFolder = 'RecentClips_' + datePart;
+      eventType = '📹 循环录像';
+    } else {
+      // No known folder type — group by date too
+      const datePart = segPrefix.split('_')[0];
+      eventFolder = 'Recordings_' + datePart;
+      eventType = '📹 录像';
+    }
+
+    if (!eventMap[eventFolder]) {
+      eventMap[eventFolder] = {name:eventFolder, type:eventType, segments:{}, metadata:null};
+    }
+    if (!eventMap[eventFolder].segments[segPrefix]) {
+      eventMap[eventFolder].segments[segPrefix] = {name:segPrefix, files:{}};
+    }
+    eventMap[eventFolder].segments[segPrefix].files[cam] = f;
+  }
+
+  // Try to match orphan metadata to events by name similarity
+  if (orphanMetadata) {
+    for (const [metaFolder, metaFile] of Object.entries(orphanMetadata)) {
+      // Try exact match first
+      if (eventMap[metaFolder]) {
+        eventMap[metaFolder].metadata = metaFile;
+        continue;
+      }
+      // Try matching by timestamp prefix (e.g. event.json folder "2024-01-15_10-23-45" 
+      // might match a video event with same timestamp prefix)
+      const metaTs = detectTimestamp(metaFolder);
+      if (metaTs) {
+        for (const ev of Object.values(eventMap)) {
+          const evTs = detectTimestamp(ev.name);
+          if (evTs && evTs === metaTs) {
+            ev.metadata = metaFile;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // Convert to array, filter out events with 0 segments, sort by first segment timestamp descending
+  return Object.values(eventMap)
+    .filter(e => Object.keys(e.segments).length > 0) // skip empty events
+    .map(e => ({
+      ...e,
+      segments: Object.values(e.segments).sort((a,b) => a.name.localeCompare(b.name))
+    }))
+    .sort((a,b) => {
+      // Sort by first segment's timestamp for consistent chronological order
+      const aTs = a.segments[0]?.name || a.name;
+      const bTs = b.segments[0]?.name || b.name;
+      return bTs.localeCompare(aTs);
+    });
+}
+
+// ═══════════════════════════════════════════
+// Render event list
+// ═══════════════════════════════════════════
+function renderEventList() {
+  const list = document.getElementById('eventList');
+  list.innerHTML = '';
+
+  if (!events.length) {
+    list.innerHTML = '<div style="padding:20px;color:var(--dim);font-size:13px;text-align:center;">没有找到视频文件</div>';
+    return;
+  }
+
+  events.forEach((ev, idx) => {
+    const div = document.createElement('div');
+    div.className = 'event-item';
+    div.dataset.eventIdx = idx;
+
+    const segCount = ev.segments.length;
+    const startTime = formatEventTime(ev.segments[0].name);
+    const endTime = formatEventTime(ev.segments[ev.segments.length - 1].name);
+
+    let timeDisplay;
+    if (segCount > 1) {
+      const startShort = startTime.split(' ')[1] || startTime;
+      const endShort = endTime.split(' ')[1] || endTime;
+      const dateStr = startTime.split(' ')[0] || '';
+      timeDisplay = `${dateStr} ${startShort}~${endShort}`;
+    } else {
+      timeDisplay = startTime;
+    }
+
+    // Extract icon and type class
+    const typeStr = ev.type || '📹 录像';
+    const icon = typeStr.split(' ')[0];
+    const typeLabel = typeStr.split(' ').slice(1).join(' ') || '录像';
+    let typeClass = 'ev-type-recent';
+    if (typeStr.includes('哨兵')) typeClass = 'ev-type-sentry';
+    else if (typeStr.includes('手动') || typeStr.includes('保存')) typeClass = 'ev-type-saved';
+
+    div.innerHTML = `
+      <div class="ev-icon">${icon}</div>
+      <div class="ev-info">
+        <div class="ev-time">${timeDisplay}</div>
+        <span class="ev-type-badge ${typeClass}">${typeLabel}</span>
+      </div>
+      <div class="ev-segs">${segCount}段 <span class="ev-arrow">▾</span></div>
+    `;
+
+    div.onclick = () => { trackClick('选择事件', timeDisplay); selectEvent(idx); };
+    list.appendChild(div);
+  });
+}
+
+function formatEventTime(name) {
+  // 2024-01-15_10-23-45 → 2024-01-15 10:23:45
+  return name.replace('_', ' ').replace(/-/g, (m, i) => i > 10 ? ':' : '-');
+}
+
+// ═══════════════════════════════════════════
+// Select event & segment
+// ═══════════════════════════════════════════
+function selectEvent(idx) {
+  // Record the previously active event index BEFORE clearing
+  const prevActiveItem = document.querySelector('.event-item.active');
+  const prevIdx = prevActiveItem ? parseInt(prevActiveItem.dataset.eventIdx) : -1;
+
+  currentEvent = events[idx];
+  document.querySelectorAll('.event-item').forEach(el => el.classList.remove('active'));
+  document.querySelector(`.event-item[data-event-idx="${idx}"]`)?.classList.add('active');
+
+  // Toggle: if clicking the already-active event, toggle segment list
+  if (prevIdx === idx) {
+    const existingList = document.querySelector('.event-item.active')?.nextElementSibling;
+    if (existingList && existingList.classList.contains('seg-list')) {
+      existingList.remove();
+      document.querySelector('.event-item.active')?.classList.add('collapsed');
+      return;
+    }
+  }
+
+  // Reset multi-segment timeline data
+  segDurations = new Array(currentEvent.segments.length).fill(0);
+  segOffsets = [];
+  totalDuration = 0;
+
+  // Pre-calculate durations — sequential to avoid creating hundreds of video elements
+  preloadSegmentDurations(currentEvent.segments, 0);
+
+  // Update sidebar to show segments
+  const list = document.getElementById('eventList');
+
+  // Remove all old seg-lists
+  list.querySelectorAll('.seg-list').forEach(el => el.remove());
+  list.querySelectorAll('.event-item.collapsed').forEach(el => el.classList.remove('collapsed'));
+
+  if (currentEvent.segments.length > 1) {
+    const segList = document.createElement('div');
+    segList.className = 'seg-list';
+    currentEvent.segments.forEach((seg, si) => {
+      const sd = document.createElement('div');
+      sd.className = 'seg-item';
+      sd.textContent = `段 ${si+1}: ${seg.name.split('_')[1]}`;
+      sd.onclick = (e) => { e.stopPropagation(); trackClick('选择片段', si+''); selectSegment(si); };
+      segList.appendChild(sd);
+    });
+    document.querySelector('.event-item.active')?.after(segList);
+  }
+
+  selectSegment(0);
+  if (isMobile) closeSidebar();
+}
+
+function preloadSegmentDurations(segs, idx) {
+  if (idx >= segs.length) {
+    recalcTimeline();
+    updateTimelineMarkers();
+    updateTimeDisplay();
+    return;
+  }
+
+  const firstFile = Object.values(segs[idx].files)[0];
+  if (!firstFile) {
+    segDurations[idx] = 0;
+    preloadSegmentDurations(segs, idx + 1);
+    return;
+  }
+
+  const tmpV = document.createElement('video');
+  tmpV.preload = '元数据';
+  const url = URL.createObjectURL(firstFile);
+
+  const cleanup = () => {
+    URL.revokeObjectURL(url);
+    tmpV.removeAttribute('src');
+    tmpV.load();
+  };
+
+  tmpV.onloadedmetadata = () => {
+    segDurations[idx] = tmpV.duration || 0;
+    recalcTimeline();
+    updateTimeDisplay();
+    updateProgress();
+    cleanup();
+    preloadSegmentDurations(segs, idx + 1);
+  };
+  tmpV.onerror = () => {
+    segDurations[idx] = 0;
+    cleanup();
+    preloadSegmentDurations(segs, idx + 1);
+  };
+  tmpV.src = url;
+}
+
+function recalcTimeline() {
+  totalDuration = 0;
+  segOffsets = [];
+  for (let i = 0; i < segDurations.length; i++) {
+    segOffsets[i] = totalDuration;
+    totalDuration += segDurations[i] || 0;
+  }
+}
+
+function updateTimelineMarkers() {
+  // Add visual markers on timeline for segment boundaries
+  const timeline = document.getElementById('timeline');
+  // Remove old markers
+  timeline.querySelectorAll('.seg-marker').forEach(el => el.remove());
+  // Add markers
+  for (let i = 1; i < segDurations.length; i++) {
+    if (totalDuration <= 0) break;
+    const pct = (segOffsets[i] / totalDuration) * 100;
+    const marker = document.createElement('div');
+    marker.className = 'seg-marker';
+    marker.style.cssText = `position:absolute;left:${pct}%;top:0;bottom:0;width:2px;background:rgba(255,255,255,.3);z-index:2;pointer-events:none;`;
+    timeline.appendChild(marker);
+  }
+}
+
+function selectSegment(idx) {
+  currentSegIdx = idx;
+  currentSegment = currentEvent.segments[idx];
+  document.querySelectorAll('.seg-item').forEach(el => el.classList.remove('active'));
+  document.querySelector(`.seg-item:nth-child(${idx+1})`)?.classList.add('active');
+
+  loadSegment(currentSegment);
+}
+
+// ═══════════════════════════════════════════
+// Load & play segment
+// ═══════════════════════════════════════════
+function loadSegment(seg) {
+  document.getElementById('emptyState')?.remove();
+  document.getElementById('controls').style.display = '';
+
+  // Update title
+  document.getElementById('currentTitle').textContent = currentEvent.name;
+  document.getElementById('currentMeta').textContent = `${seg.name} · ${currentEvent.type||''}`;
+
+  // Build video grid
+  const grid = document.getElementById('videoGrid');
+
+  // Revoke old object URLs and pause old videos to free resources
+  Object.values(videos).forEach(v => {
+    try {
+      v.pause();
+      v.removeAttribute('src');
+      v.load();  // force release
+    } catch(e) {}
+    if (v.src && v.src.startsWith('blob:')) URL.revokeObjectURL(v.src);
+  });
+
+  grid.innerHTML = '';
+  videos = {};
+  CAM_LAYOUT.forEach(cam => {
+    const cell = document.createElement('div');
+    cell.className = 'video-cell';
+    cell.dataset.cam = cam;
+
+    const file = seg.files[cam];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      const v = document.createElement('video');
+      v.muted = true;
+      v.playsInline = true;
+      v.preload = '元数据';
+      v.addEventListener('error', () => {
+        console.warn(`Video load error: ${cam} - ${file.name}`);
+        cell.style.background = '#1a0000';
+        const err = document.createElement('div');
+        err.className = 'no-signal';
+        err.textContent = '加载失败';
+        cell.appendChild(err);
+      });
+      v.src = url;
+      cell.appendChild(v);
+      videos[cam] = v;
+    } else {
+      const ns = document.createElement('div');
+      ns.className = 'no-signal';
+      ns.textContent = '无信号';
+      cell.appendChild(ns);
+    }
+
+    const label = document.createElement('div');
+    label.className = 'cam-label';
+    label.textContent = CAM_LABELS[cam];
+    cell.appendChild(label);
+
+    // Timestamp overlay
+    const tsOverlay = document.createElement('div');
+    tsOverlay.className = 'ts-overlay';
+    tsOverlay.id = `ts-${cam}`;
+    cell.appendChild(tsOverlay);
+
+    grid.appendChild(cell);
+  });
+
+  // Setup sync
+  setupVideoSync();
+  loadMetadata(seg);
+  applyViewMode();
+}
+
+// ═══════════════════════════════════════════
+// View mode (all / single / dual / quad)
+// ═══════════════════════════════════════════
+// Layout definitions: which cameras to show and grid class
+const LAYOUTS = {
+  'all':         { class:'grid-view',   cams:['front','back','left_pillar','right_pillar','left_repeater','right_repeater'] },
+  'dual-fb':     { class:'dual-view',   cams:['front','back'] },
+  'quad-front':  { class:'quad-view',   cams:['front','back','left_pillar','right_pillar'] },
+  'quad-rear':   { class:'quad-view',   cams:['front','back','left_repeater','right_repeater'] },
+};
+
+function applyViewMode() {
+  const grid = document.getElementById('videoGrid');
+  // Remove all layout classes
+  grid.classList.remove('grid-view', 'dual-view', 'quad-view', 'single-view');
+
+  // Single camera view
+  if (currentView !== 'all' && !LAYOUTS[currentView]) {
+    grid.classList.add('single-view');
+    grid.querySelectorAll('.video-cell').forEach(cell => {
+      cell.style.display = (cell.dataset.cam === currentView) ? '' : 'none';
+    });
+    return;
+  }
+
+  // Layout view (all / dual / quad)
+  const layout = LAYOUTS[currentView] || LAYOUTS['all'];
+  grid.classList.add(layout.class);
+  grid.querySelectorAll('.video-cell').forEach(cell => {
+    cell.style.display = layout.cams.includes(cell.dataset.cam) ? '' : 'none';
+  });
+}
+
+// Camera/layout tab clicks
+document.getElementById('camTabs').addEventListener('click', (e) => {
+  const tab = e.target.closest('.cam-tab');
+  if (!tab) return;
+
+  if (tab.dataset.layout) {
+    trackClick('切换布局', tab.dataset.layout);
+  } else if (tab.dataset.cam) {
+    trackClick('切换摄像头', tab.dataset.cam);
+  }
+
+  // Layout tabs
+  if (tab.dataset.layout) {
+    if (tab.classList.contains('active')) {
+      // Clicking active layout tab → switch back to all
+      document.querySelectorAll('.cam-tab').forEach(t => t.classList.remove('active'));
+      document.querySelector('.cam-tab[data-cam="all"]').classList.add('active');
+      currentView = 'all';
+    } else {
+      document.querySelectorAll('.cam-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentView = tab.dataset.layout;
+    }
+    applyViewMode();
+    return;
+  }
+
+  // Single camera tabs
+  const cam = tab.dataset.cam;
+  if (tab.classList.contains('active') && cam !== 'all') {
+    document.querySelectorAll('.cam-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector('.cam-tab[data-cam="all"]').classList.add('active');
+    currentView = 'all';
+  } else {
+    document.querySelectorAll('.cam-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentView = cam;
+  }
+  applyViewMode();
+});
+
+// ═══════════════════════════════════════════
+// Video synchronization
+// ═══════════════════════════════════════════
+function setupVideoSync() {
+  const allVideos = Object.values(videos);
+  if (!allVideos.length) return;
+
+  // Reset
+  isPlaying = false;
+  currentTime = 0;
+  duration = 0;
+  isSeeking = false;
+  seekPending = 0;
+
+  const playBtn = document.getElementById('playBtn');
+  playBtn.textContent = '▶';
+
+  // Find shortest video as duration reference
+  let loadedCount = 0;
+  const needLoad = allVideos.length;
+  endedHandled = false; // reset for new segment
+
+  allVideos.forEach(v => {
+    v.addEventListener('loadedmetadata', () => {
+      loadedCount++;
+      if (loadedCount >= needLoad) {
+        duration = Math.min(...allVideos.map(v => v.duration || Infinity));
+        if (duration === Infinity) duration = allVideos[0].duration || 0;
+        updateTimeDisplay();
+        updateProgress();
+        updateTimestampOverlay();
+      }
+    });
+
+    v.addEventListener('timeupdate', () => {
+      if (v === getMasterVideo() && !isSeeking) {
+        currentTime = v.currentTime;
+        updateTimeDisplay();
+        updateProgress();
+        updateTimestampOverlay();
+      }
+    });
+
+    // Sync check: if any video falls behind by > 0.3s, catch it up
+    v.addEventListener('timeupdate', () => {
+      if (!isSeeking && isPlaying) {
+        const master = getMasterVideo();
+        if (master && v !== master) {
+          const diff = v.currentTime - master.currentTime;
+          if (Math.abs(diff) > 0.3) {
+            v.currentTime = master.currentTime;
+          }
+        }
+      }
+    });
+
+    // Buffering: show indicator when waiting
+    v.addEventListener('waiting', () => {
+      if (v === getMasterVideo()) showBuffering(true);
+    });
+    v.addEventListener('playing', () => {
+      showBuffering(false);
+    });
+    v.addEventListener('canplay', () => {
+      showBuffering(false);
+    });
+
+    // Seeked event: track when all videos finish seeking
+    v.addEventListener('seeked', () => {
+      seekPending--;
+      if (seekPending <= 0) {
+        isSeeking = false;
+        showBuffering(false);
+        if (playAfterSeek) {
+          playAfterSeek = false;
+          playAll();
+        }
+      }
+    });
+
+    // Only master video triggers segment switch (once)
+    v.addEventListener('ended', () => {
+      if (v !== getMasterVideo()) return;  // only master
+      if (endedHandled) return;              // only once
+      endedHandled = true;
+
+      if (currentEvent && currentSegIdx < currentEvent.segments.length - 1) {
+        showBuffering(true);
+        selectSegment(currentSegIdx + 1);
+        // After new segment loads, wait for ALL videos ready
+        const checkLoaded = setInterval(() => {
+          const vids = Object.values(videos);
+          if (!vids.length) return;
+          const allReady = vids.every(vv => vv.readyState >= 3);
+          if (allReady) {
+            clearInterval(checkLoaded);
+            playAll();
+          }
+        }, 100);
+        setTimeout(() => {
+          clearInterval(checkLoaded);
+          playAll();
+        }, 5000);
+        return;
+      }
+      isPlaying = false;
+      playBtn.textContent = '▶';
+    });
+  });
+}
+
+function showBuffering(show) {
+  let el = document.getElementById('bufferingIndicator');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'bufferingIndicator';
+    el.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.7);color:#fff;padding:8px 16px;border-radius:8px;font-size:14px;z-index:50;display:none;pointer-events:none;';
+    el.textContent = '⏳ 缓冲中...';
+    document.querySelector('.video-grid')?.appendChild(el);
+  }
+  el.style.display = show ? 'block' : 'none';
+}
+
+function getMasterVideo() {
+  return videos['front'] || videos[Object.keys(videos)[0]];
+}
+
+function playAll() {
+  const allVideos = Object.values(videos);
+  if (!allVideos.length) return;
+  isPlaying = true;
+  // Restore playback rate from speed selector
+  const speed = parseFloat(document.getElementById('speedSelect').value) || 1;
+  allVideos.forEach(v => {
+    v.playbackRate = speed;
+    const p = v.play();
+    if (p && p.catch) p.catch(()=>{});
+  });
+  document.getElementById('playBtn').textContent = '⏸';
+}
+
+function pauseAll() {
+  isPlaying = false;
+  Object.values(videos).forEach(v => v.pause());
+  document.getElementById('playBtn').textContent = '▶';
+}
+
+function seekAll(time) {
+  const allVideos = Object.values(videos);
+  if (!allVideos.length) return;
+
+  const total = totalDuration || duration;
+  if (total <= 0) return;
+
+  // Clamp time
+  time = Math.max(0, Math.min(total, time));
+
+  // Find which segment this time falls into
+  let targetSeg = 0;
+  let segTime = time;
+  for (let i = 0; i < segDurations.length; i++) {
+    if (time >= (segOffsets[i] || 0) && time < (segOffsets[i] || 0) + (segDurations[i] || 0)) {
+      targetSeg = i;
+      segTime = time - (segOffsets[i] || 0);
+      break;
+    }
+    if (i === segDurations.length - 1) {
+      // Past the end, use last segment
+      targetSeg = i;
+      segTime = (segDurations[i] || duration) - 0.01;
+    }
+  }
+
+  // If target is in a different segment, switch to it
+  if (targetSeg !== currentSegIdx && currentEvent) {
+    selectSegment(targetSeg);
+    // After switch, seek within the new segment
+    const checkLoaded = setInterval(() => {
+      const master = getMasterVideo();
+      if (master && master.readyState >= 2) {
+        clearInterval(checkLoaded);
+        seekWithinSegment(segTime);
+      }
+    }, 100);
+    setTimeout(() => clearInterval(checkLoaded), 5000);
+    return;
+  }
+
+  // Same segment, just seek
+  seekWithinSegment(segTime);
+}
+
+function seekWithinSegment(segTime) {
+  const allVideos = Object.values(videos);
+  const wasPlaying = isPlaying;
+  if (wasPlaying) {
+    Object.values(videos).forEach(v => v.pause());
+  }
+
+  isSeeking = true;
+  seekPending = allVideos.length;
+  showBuffering(true);
+
+  // Clamp to current segment duration
+  const segDur = segDurations[currentSegIdx] || duration;
+  segTime = Math.max(0, Math.min(segDur, segTime));
+
+  allVideos.forEach(v => {
+    try {
+      v.currentTime = segTime;
+      if (Math.abs(v.currentTime - segTime) < 0.01) {
+        seekPending--;
+      }
+    } catch(e) {
+      seekPending--;
+    }
+  });
+
+  currentTime = segTime;
+  updateTimeDisplay();
+  updateProgress();
+  updateTimestampOverlay();
+
+  if (seekPending <= 0) {
+    isSeeking = false;
+    showBuffering(false);
+    if (wasPlaying) playAll();
+  } else {
+    if (wasPlaying) playAfterSeek = true;
+    setTimeout(() => {
+      if (isSeeking) {
+        isSeeking = false;
+        seekPending = 0;
+        showBuffering(false);
+        if (playAfterSeek) {
+          playAfterSeek = false;
+          playAll();
+        }
+      }
+    }, 2000);
+  }
+}
+
+function updateTimeDisplay() {
+  // Show total timeline position: segOffset + currentTime within segment
+  const totalPos = (segOffsets[currentSegIdx] || 0) + currentTime;
+  const total = totalDuration || duration;
+  document.getElementById('timeDisplay').textContent = `${fmtTime(totalPos)} / ${fmtTime(total)}`;
+}
+
+function updateProgress() {
+  const total = totalDuration || duration;
+  const totalPos = (segOffsets[currentSegIdx] || 0) + currentTime;
+  const pct = total > 0 ? (totalPos / total) * 100 : 0;
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+
+function fmtTime(s) {
+  if (!s || !isFinite(s)) return '00:00';
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+// ═══════════════════════════════════════════
+
+// ═══════════════════════════════════════════
+// Timestamp overlay (real-time)
+// ═══════════════════════════════════════════
+function parseSegTimestamp(segName) {
+  // segName: 2024-01-15_10-13-43
+  const m = segName.match(/(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})/);
+  if (!m) return null;
+  // YYYY-MM-DD HH:MM:SS → Date
+  return new Date(
+    parseInt(m[1]), parseInt(m[2])-1, parseInt(m[3]),
+    parseInt(m[4]), parseInt(m[5]), parseInt(m[6])
+  );
+}
+
+function updateTimestampOverlay() {
+  if (!currentSegment) return;
+  const baseTime = parseSegTimestamp(currentSegment.name);
+  if (!baseTime) return;
+
+  // Add current playback seconds
+  const realTime = new Date(baseTime.getTime() + currentTime * 1000);
+
+  // Format: 2024-01-15 10:13:48
+  const Y = realTime.getFullYear();
+  const Mo = String(realTime.getMonth()+1).padStart(2,'0');
+  const D = String(realTime.getDate()).padStart(2,'0');
+  const H = String(realTime.getHours()).padStart(2,'0');
+  const Mi = String(realTime.getMinutes()).padStart(2,'0');
+  const S = String(realTime.getSeconds()).padStart(2,'0');
+  const tsStr = `${Y}-${Mo}-${D} ${H}:${Mi}:${S}`;
+
+  // Update all overlays
+  document.querySelectorAll('.ts-overlay').forEach(el => {
+    el.textContent = tsStr;
+  });
+
+  // Also update topbar meta
+  if (currentEvent) {
+    document.getElementById('currentMeta').textContent = `${tsStr} · ${currentEvent.type||''}`;
+  }
+
+}
+
+// ═══════════════════════════════════════════
+// Controls
+// ═══════════════════════════════════════════
+document.getElementById('playBtn').onclick = () => {
+  trackClick(isPlaying ? '暂停' : '播放');
+  if (isPlaying) pauseAll(); else playAll();
+};
+
+// Speed control
+document.getElementById('speedSelect').onchange = (e) => {
+  trackClick('切换倍速', e.target.value);
+  const speed = parseFloat(e.target.value);
+  Object.values(videos).forEach(v => { v.playbackRate = speed; });
+  // Blur select so spacebar triggers play/pause instead of re-opening the dropdown
+  e.target.blur();
+};
+
+// Timeline click/drag
+const timeline = document.getElementById('timeline');
+let dragging = false;
+let pendingSeekTime = -1;
+let rafScheduled = false;
+
+function scheduleSeek(time) {
+  pendingSeekTime = time;
+  if (!rafScheduled) {
+    rafScheduled = true;
+    requestAnimationFrame(() => {
+      rafScheduled = false;
+      if (pendingSeekTime >= 0) {
+        seekAll(pendingSeekTime);
+        pendingSeekTime = -1;
+      }
+    });
+  }
+}
+
+function seekFromEvent(e) {
+  const total = totalDuration || duration;
+  if (total <= 0) return;
+  const rect = timeline.getBoundingClientRect();
+  const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  scheduleSeek(x * total);
+}
+
+timeline.addEventListener('mousedown', (e) => {
+  dragging = true;
+  e.preventDefault();
+  seekFromEvent(e);
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (dragging) seekFromEvent(e);
+});
+
+document.addEventListener('mouseup', () => {
+  dragging = false;
+});
+
+timeline.addEventListener('touchstart', (e) => {
+  dragging = true;
+  seekFromEvent(e.touches[0]);
+  e.preventDefault();
+});
+
+document.addEventListener('touchmove', (e) => {
+  if (dragging) {
+    seekFromEvent(e.touches[0]);
+    e.preventDefault();
+  }
+}, { passive: false });
+
+document.addEventListener('touchend', () => { dragging = false; });
+
+// ═══════════════════════════════════════════
+// Screenshot (composite with timestamps)
+// ═══════════════════════════════════════════
+function getCurrentTimestampStr() {
+  if (!currentSegment) return '';
+  const baseTime = parseSegTimestamp(currentSegment.name);
+  if (!baseTime) return currentSegment.name;
+  const realTime = new Date(baseTime.getTime() + currentTime * 1000);
+  const Y = realTime.getFullYear();
+  const Mo = String(realTime.getMonth()+1).padStart(2,'0');
+  const D = String(realTime.getDate()).padStart(2,'0');
+  const H = String(realTime.getHours()).padStart(2,'0');
+  const Mi = String(realTime.getMinutes()).padStart(2,'0');
+  const S = String(realTime.getSeconds()).padStart(2,'0');
+  return `${Y}-${Mo}-${D} ${H}:${Mi}:${S}`;
+}
+
+document.getElementById('screenshotBtn').onclick = () => {
+  trackClick('截图', currentView);
+  const canvas = document.createElement('canvas');
+  const w = 640, h = 360;
+  const isSingle = currentView !== 'all';
+
+  if (isSingle && videos[currentView]) {
+    // Single camera screenshot
+    const v = videos[currentView];
+    const vw = v.videoWidth || 1280, vh = v.videoHeight || 720;
+    canvas.width = vw;
+    canvas.height = vh + 40; // extra for timestamp bar
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(v, 0, 0, vw, vh);
+
+    // Timestamp bar
+    ctx.fillStyle = 'rgba(0,0,0,.8)';
+    ctx.fillRect(0, vh, canvas.width, 40);
+    ctx.fillStyle = '#fff';
+    ctx.font = '18px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(`[${CAM_LABELS[currentView]}] ${getCurrentTimestampStr()}`, 12, vh + 26);
+  } else {
+    // 6-grid composite
+    canvas.width = w * 2;
+    canvas.height = h * 3;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const positions = {
+      front:          {x:0, y:0},
+      back:           {x:w, y:0},
+      left_pillar:    {x:0, y:h},
+      right_pillar:   {x:w, y:h},
+      left_repeater:  {x:0, y:h*2},
+      right_repeater: {x:w, y:h*2}
+    };
+
+    CAM_LAYOUT.forEach(cam => {
+      const v = videos[cam];
+      const pos = positions[cam];
+      if (v && v.videoWidth > 0) {
+        const vw = v.videoWidth, vh = v.videoHeight;
+        const scale = Math.max(w / vw, h / vh);
+        const dw = vw * scale, dh = vh * scale;
+        const dx = pos.x + (w - dw) / 2;
+        const dy = pos.y + (h - dh) / 2;
+        ctx.drawImage(v, dx, dy, dw, dh);
+      }
+      // Label
+      ctx.fillStyle = 'rgba(0,0,0,.65)';
+      ctx.fillRect(pos.x + 8, pos.y + 8, 64, 22);
+      ctx.fillStyle = '#fff';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(CAM_LABELS[cam], pos.x + 40, pos.y + 22);
+      // Timestamp on each cell
+      ctx.fillStyle = 'rgba(0,0,0,.7)';
+      ctx.fillRect(pos.x + w - 170, pos.y + h - 24, 162, 20);
+      ctx.fillStyle = '#fff';
+      ctx.font = '11px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(getCurrentTimestampStr(), pos.x + w - 12, pos.y + h - 10);
+    });
+
+    // Big timestamp at bottom
+    ctx.fillStyle = 'rgba(0,0,0,.8)';
+    ctx.fillRect(0, canvas.height - 28, canvas.width, 28);
+    ctx.fillStyle = '#fff';
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(getCurrentTimestampStr(), canvas.width / 2, canvas.height - 10);
+  }
+
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tesla_${currentView === 'all' ? 'all' : currentView}_${getCurrentTimestampStr().replace(/[: ]/g, '-')}.png`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('截图已保存');
+  }, 'image/png');
+};
+
+// ═══════════════════════════════════════════
+// Video export (MediaRecorder + canvas composite)
+// ═══════════════════════════════════════════
+let mediaRecorder = null;
+let recordingChunks = [];
+let recordingCanvas = null;
+let recordingRAF = null;
+
+function startRecording() {
+  const isSingle = currentView !== 'all';
+  const canvas = document.createElement('canvas');
+  recordingCanvas = canvas;
+
+  if (isSingle && videos[currentView]) {
+    const v = videos[currentView];
+    canvas.width = v.videoWidth || 1280;
+    canvas.height = (v.videoHeight || 720) + 40;
+  } else {
+    canvas.width = 1280;
+    canvas.height = 1080 + 40;
+  }
+
+  const ctx = canvas.getContext('2d');
+  const w = isSingle ? canvas.width : 640;
+  const h = isSingle ? (canvas.height - 40) : 360;
+
+  const positions = {
+    front:          {x:0, y:0},
+    back:           {x:w, y:0},
+    left_pillar:    {x:0, y:h},
+    right_pillar:   {x:w, y:h},
+    left_repeater:  {x:0, y:h*2},
+    right_repeater: {x:w, y:h*2}
+  };
+
+  function drawFrame() {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (isSingle && videos[currentView]) {
+      const v = videos[currentView];
+      if (v.videoWidth > 0) {
+        ctx.drawImage(v, 0, 0, canvas.width, canvas.height - 40);
+      }
+    } else {
+      CAM_LAYOUT.forEach(cam => {
+        const v = videos[cam];
+        const pos = positions[cam];
+        if (v && v.videoWidth > 0) {
+          const vw = v.videoWidth, vh = v.videoHeight;
+          const scale = Math.max(w / vw, h / vh);
+          const dw = vw * scale, dh = vh * scale;
+          const dx = pos.x + (w - dw) / 2;
+          const dy = pos.y + (h - dh) / 2;
+          ctx.drawImage(v, dx, dy, dw, dh);
+        }
+        // Label
+        ctx.fillStyle = 'rgba(0,0,0,.65)';
+        ctx.fillRect(pos.x + 8, pos.y + 8, 64, 22);
+        ctx.fillStyle = '#fff';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(CAM_LABELS[cam], pos.x + 40, pos.y + 22);
+        // Timestamp per cell
+        ctx.fillStyle = 'rgba(0,0,0,.7)';
+        ctx.fillRect(pos.x + w - 170, pos.y + h - 24, 162, 20);
+        ctx.fillStyle = '#fff';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(getCurrentTimestampStr(), pos.x + w - 12, pos.y + h - 10);
+      });
+    }
+
+    // Timestamp bar at bottom
+    ctx.fillStyle = 'rgba(0,0,0,.8)';
+    ctx.fillRect(0, canvas.height - 40, canvas.width, 40);
+    ctx.fillStyle = '#fff';
+    ctx.font = '18px sans-serif';
+    ctx.textAlign = 'left';
+    const label = isSingle ? `[${CAM_LABELS[currentView]}] ` : '[全部视角] ';
+    ctx.fillText(label + getCurrentTimestampStr(), 12, canvas.height - 14);
+
+    recordingRAF = requestAnimationFrame(drawFrame);
+  }
+  drawFrame();
+
+  const stream = canvas.captureStream(30);
+  recordingChunks = [];
+  // Prefer MP4/H.264, fall back to WebM
+  const mimeOptions = [
+    'video/mp4;codecs=h264',
+    'video/mp4;codecs=avc1',
+    'video/mp4',
+    'video/webm;codecs=vp9',
+    'video/webm;codecs=vp8',
+    'video/webm',
+  ];
+  let mimeType = '';
+  for (const m of mimeOptions) {
+    if (MediaRecorder.isTypeSupported(m)) { mimeType = m; break; }
+  }
+  // Use high bitrate for near-original quality
+  mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType, videoBitsPerSecond: 8000000 } : {});
+  mediaRecorder.ondataavailable = (e) => {
+    if (e.data.size > 0) recordingChunks.push(e.data);
+  };
+  mediaRecorder.onstop = () => {
+    const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+    const blob = new Blob(recordingChunks, { type: mimeType || 'video/webm' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tesla_${currentView === 'all' ? 'all' : currentView}_${getCurrentTimestampStr().replace(/[: ]/g, '-')}.${ext}`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    recordingChunks = [];
+    showToast(`视频已导出 (${ext.toUpperCase()})`);
+  };
+  mediaRecorder.start();
+
+  // Auto-play if paused
+  if (!isPlaying) playAll();
+
+  document.getElementById('recordBtn').textContent = '⏹ 停止';
+  document.getElementById('recordBtn').classList.add('recording');
+  showToast('开始录制...');
+}
+
+function stopRecording() {
+  if (recordingRAF) cancelAnimationFrame(recordingRAF);
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop();
+  }
+  recordingRAF = null;
+  mediaRecorder = null;
+  document.getElementById('recordBtn').textContent = '🎬 录制';
+  document.getElementById('recordBtn').classList.remove('recording');
+}
+
+// ═══════════════════════════════════════════
+// Download original files
+// ═══════════════════════════════════════════
+document.getElementById('downloadEventBtn').onclick = () => {
+  trackClick('下载原始文件');
+  if (!currentSegment) return;
+
+  // Build modal for selecting cameras
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;display:flex;align-items:center;justify-content:center;';
+
+  const box = document.createElement('div');
+  box.style.cssText = `background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:20px;max-width:360px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.5);`;
+
+  const availableCams = CAM_LAYOUT.filter(cam => currentSegment.files[cam]);
+
+  box.innerHTML = `
+    <h3 style="font-size:14px;margin-bottom:6px;">下载原始视频</h3>
+    <p style="font-size:12px;color:var(--dim);margin-bottom:14px;">当前片段：${currentSegment.name}</p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+      ${CAM_LAYOUT.map(cam => {
+        const has = currentSegment.files[cam];
+        const size = has ? (currentSegment.files[cam].size / 1024 / 1024).toFixed(1) + ' MB' : '无';
+        return `<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:${has?'pointer':'default'};opacity:${has?1:.4};">
+          <input type="checkbox" value="${cam}" ${has?'checked':''} ${has?'':'disabled'} style="accent-color:var(--accent);width:16px;height:16px;">
+          <span>${CAM_LABELS[cam]}</span>
+          <span style="margin-left:auto;color:var(--dim);font-size:11px;">${size}</span>
+        </label>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-secondary" id="dlCancel" style="font-size:12px;padding:7px 14px;">取消</button>
+      <button class="btn" id="dlConfirm" style="font-size:12px;padding:7px 14px;">下载</button>
+    </div>
+  `;
+  modal.appendChild(box);
+  document.body.appendChild(modal);
+
+  document.getElementById('dlCancel').onclick = () => modal.remove();
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
+  document.getElementById('dlConfirm').onclick = () => {
+    const selected = [...box.querySelectorAll('input[type=checkbox]:checked')].map(cb => cb.value);
+    modal.remove();
+    if (!selected.length) return;
+
+    let count = 0;
+    selected.forEach(cam => {
+      const file = currentSegment.files[cam];
+      if (!file) return;
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(file);
+      a.download = file.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      count++;
+    });
+    showToast(`开始下载 ${count} 个视频（${currentSegment.name}）`);
+  };
+};
+
+// ═══════════════════════════════════════════
+// Record button
+// ═══════════════════════════════════════════
+document.getElementById('recordBtn').onclick = () => {
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    trackClick('停止录制');
+    stopRecording();
+  } else {
+    trackClick('开始录制', currentView);
+    startRecording();
+  }
+};
+
+// ═══════════════════════════════════════════
+// Metadata
+// ═══════════════════════════════════════════
+async function loadMetadata(seg) {
+  const panel = document.getElementById('metadataPanel');
+  const content = document.getElementById('metadataContent');
+  const mapContainer = document.getElementById('mapContainer');
+  // Don't auto-show panel — only prepare content for when user clicks the button
+  mapContainer.style.display = 'none';
+
+  let geo = null; // {lat, lon, city}
+
+  // Try event.json from current event
+  if (currentEvent.metadata) {
+    try {
+      const text = await currentEvent.metadata.text();
+      const data = JSON.parse(text);
+      content.innerHTML = formatMetadata(data);
+
+      const lat = parseFloat(data.est_lat);
+      const lon = parseFloat(data.est_lon);
+      if (!isNaN(lat) && !isNaN(lon)) {
+        geo = { lat, lon, city: data.city || '' };
+      }
+    } catch(e) {
+      content.innerHTML = buildBasicMetadata(seg);
+    }
+  } else {
+    content.innerHTML = buildBasicMetadata(seg);
+  }
+
+  // Prepare map data but don't show until panel is opened
+  if (geo) {
+    mapContainer.style.display = 'block';
+    if (panel.classList.contains('show')) {
+      setTimeout(() => initMiniMap(geo.lat, geo.lon), 50);
+    } else {
+      pendingMapGeo = geo;
+    }
+  } else if (pendingSeiGpsTrack && pendingSeiGpsTrack.length > 1) {
+    // Use SEI GPS data as fallback
+    const firstPt = pendingSeiGpsTrack[0];
+    geo = { lat: firstPt[0], lon: firstPt[1], city: 'SEI GPS轨迹' };
+    mapContainer.style.display = 'block';
+    if (panel.classList.contains('show')) {
+      setTimeout(() => initMiniMap(geo.lat, geo.lon), 50);
+    } else {
+      pendingMapGeo = geo;
+    }
+  } else {
+    pendingMapGeo = null;
+  }
+}
+
+let pendingMapGeo = null;
+let pendingSeiGpsTrack = null; // GPS polyline from SEI telemetry
+
+// Override metadata button: lazy-init map when panel opens
+document.getElementById('metadataBtn').onclick = () => {
+  const panel = document.getElementById('metadataPanel');
+  trackClick('元数据', panel.classList.contains('show') ? 'close' : 'open');
+  panel.classList.toggle('show');
+  // If opening and have pending map, init it now
+  if (panel.classList.contains('show') && pendingMapGeo) {
+    setTimeout(() => initMiniMap(pendingMapGeo.lat, pendingMapGeo.lon), 50);
+  }
+};
+
+// Tip button
+document.getElementById('tipBtn').onclick = () => {
+  trackClick('打赏作者');
+  document.getElementById('tipOverlay').classList.add('show');
+};
+document.getElementById('tipOverlay').onclick = (e) => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
+};
+
+let miniMapInstance = null;
+function initMiniMap(lat, lon) {
+  // Destroy previous map if exists
+  if (miniMapInstance) {
+    miniMapInstance.remove();
+    miniMapInstance = null;
+  }
+
+  miniMapInstance = L.map('miniMap', {
+    zoomControl: false,
+    attributionControl: false,
+    dragging: true,
+    scrollWheelZoom: false,
+    doubleClickZoom: true,
+  }).setView([lat, lon], 15);
+
+  // Dark theme tiles (CartoDB Dark Matter)
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    subdomains: 'abcd',
+    maxZoom: 19,
+  }).addTo(miniMapInstance);
+
+  // Draw SEI GPS track if available
+  if (pendingSeiGpsTrack && pendingSeiGpsTrack.length > 1) {
+    L.polyline(pendingSeiGpsTrack, {
+      color: '#4a9eff',
+      weight: 3,
+      opacity: 0.8
+    }).addTo(miniMapInstance);
+    // Fit map to track bounds
+    miniMapInstance.fitBounds(pendingSeiGpsTrack, { padding: [20, 20] });
+  }
+
+  // Marker
+  const marker = L.marker([lat, lon]).addTo(miniMapInstance);
+
+  // Force redraw after panel transition
+  setTimeout(() => miniMapInstance && miniMapInstance.invalidateSize(), 100);
+
+  // External map link (Gaode)
+  const amapUrl = `https://uri.amap.com/marker?position=${lon},${lat}&name=${encodeURIComponent(currentEvent?.name || 'Tesla事件')}`;
+  document.getElementById('mapLink').href = amapUrl;
+}
+
+function buildBasicMetadata(seg) {
+  let html = '<h3>片段信息</h3>';
+  const ts = parseSegTimestamp(seg.name);
+  if (ts) {
+    html += `<div class="md-row"><span class="md-label">时间</span><span>${ts.toLocaleString('zh-CN')}</span></div>`;
+  }
+  // File info for each camera
+  const camCount = Object.keys(seg.files).length;
+  html += `<div class="md-row"><span class="md-label">摄像头</span><span>${camCount}/${CAMERAS.length} 路</span></div>`;
+  // List each file with size
+  for (const [cam, file] of Object.entries(seg.files)) {
+    const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+    html += `<div class="md-row"><span class="md-label">${CAM_LABELS[cam]||cam}</span><span>${sizeMB} MB</span></div>`;
+  }
+  // Total size
+  const totalSize = Object.values(seg.files).reduce((s,f) => s + f.size, 0);
+  html += `<div class="md-row"><span class="md-label">总大小</span><span>${(totalSize/1024/1024).toFixed(1)} MB</span></div>`;
+  // Event info
+  if (currentEvent) {
+    html += `<div class="md-row"><span class="md-label">事件</span><span>${currentEvent.name}</span></div>`;
+    html += `<div class="md-row"><span class="md-label">类型</span><span>${currentEvent.type || '录像'}</span></div>`;
+    html += `<div class="md-row"><span class="md-label">段数</span><span>${currentEvent.segments.length}</span></div>`;
+  }
+  // Missing cameras
+  const missing = CAMERAS.filter(c => !seg.files[c]);
+  if (missing.length) {
+    const missingLabels = missing.map(c => CAM_LABELS[c]||c).join('、');
+    html += `<div class="md-row"><span class="md-label">缺失</span><span style="color:#e8210f">${missingLabels}</span></div>`;
+  }
+  return html;
+}
+
+function formatMetadata(data) {
+  let html = '';
+  if (data.timestamp) html += `<div class="md-row"><span class="md-label">时间</span><span>${data.timestamp}</span></div>`;
+  if (data.reason) html += `<div class="md-row"><span class="md-label">原因</span><span>${data.reason}</span></div>`;
+  if (data.city) html += `<div class="md-row"><span class="md-label">城市</span><span>${data.city}</span></div>`;
+  if (data.est_lat && data.est_lon) html += `<div class="md-row"><span class="md-label">坐标</span><span>${data.est_lat.toFixed(4)}, ${data.est_lon.toFixed(4)}</span></div>`;
+  // Device info
+  if (data.device_name) html += `<div class="md-row"><span class="md-label">设备</span><span>${data.device_name}</span></div>`;
+  // Any other fields
+  for (const [k,v] of Object.entries(data)) {
+    if (['timestamp','reason','city','est_lat','est_lon','device_name'].includes(k)) continue;
+    const val = typeof v === 'object' ? JSON.stringify(v) : v;
+    html += `<div class="md-row"><span class="md-label">${k}</span><span>${val}</span></div>`;
+  }
+  return html || '<div style="color:var(--dim)">无元数据</div>';
+}
+
+
+// ═══════════════════════════════════════════
+// Sidebar toggle (mobile)
+// ═══════════════════════════════════════════
+function openSidebar() {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sidebarBackdrop').classList.add('show');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarBackdrop').classList.remove('show');
+}
+
+document.getElementById('sidebarToggle').onclick = () => {
+  trackClick('切换侧边栏');
+  const sb = document.getElementById('sidebar');
+  if (sb.classList.contains('open')) closeSidebar(); else openSidebar();
+};
+document.getElementById('sidebarBackdrop').onclick = closeSidebar;
+
+// ═══════════════════════════════════════════
+// Toast
+// ═══════════════════════════════════════════
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ═══════════════════════════════════════════
+// Keyboard shortcuts
+// ═══════════════════════════════════════════
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  switch(e.key) {
+    case ' ': e.preventDefault(); (isPlaying ? pauseAll() : playAll()); break;
+    case 'ArrowLeft': seekAll(Math.max(0, (segOffsets[currentSegIdx]||0) + currentTime - 5)); break;
+    case 'ArrowRight': seekAll(Math.min(totalDuration||duration, (segOffsets[currentSegIdx]||0) + currentTime + 5)); break;
+    case 's': case 'S': document.getElementById('screenshotBtn').click(); break;
+  }
+});
+</script>
+</body>
+</html>
