@@ -4,7 +4,7 @@
 
 🔗 <a href="https://turboturn.github.io/tesla-cam-viewer/" target="_blank">在线体验</a>
 
-[English Version](README_EN.md)
+🌍 <a href="README_EN.md">English Version</a>
 
 ## 功能特性
 
