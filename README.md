@@ -22,7 +22,7 @@
 
 ## 截图
 
-![Tesla Cam Viewer - 6 cameras + timeline](screenshot-preview.jpg)
+![Tesla Cam Viewer - 6 cameras + timeline](https://stephenyi.cn/tesla-cam/compare-250k.jpg)
 
 ## 快速开始
 
