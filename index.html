@@ -160,6 +160,14 @@ body {
 }
 .timeline:hover .progress::after { opacity:1; }
 .timeline .buffer { position:absolute; height:100%; background:rgba(255,255,255,.06); border-radius:3px; width:0%; }
+/* Trim range & handles */
+.timeline .trim-range { position:absolute; height:100%; background:rgba(74,158,255,.25); border-radius:0; }
+.trim-handle { position:absolute; top:50%; transform:translate(-50%,-50%); width:14px; height:14px; border-radius:50%; background:#4a9eff; border:2px solid #fff; cursor:ew-resize; z-index:5; box-shadow:0 0 8px rgba(74,158,255,.5); display:none; }
+.trim-handle.trim-start { left:0; }
+.trim-handle.trim-end { left:100%; }
+.trim-info { font-size:11px; color:#4a9eff; font-weight:500; white-space:nowrap; flex-shrink:0; }
+.btn-trim { background:#4a9eff; box-shadow:0 2px 10px rgba(74,158,255,.3); color:#fff; }
+.btn-trim:hover { box-shadow:0 4px 18px rgba(74,158,255,.45); }
 .time-display { font-size:11px; color:var(--dim); min-width:86px; text-align:right; font-variant-numeric:tabular-nums; font-weight:500; }
 .speed-select {
   background:var(--panel2); color:var(--text); border:1px solid var(--border);
@@ -508,8 +516,12 @@ function trackClick(name, ext1) {
         <div class="timeline" id="timeline">
           <div class="buffer" id="bufferBar"></div>
           <div class="progress" id="progressBar"></div>
+          <div class="trim-range" id="trimRange"></div>
+          <div class="trim-handle trim-start" id="trimStart"></div>
+          <div class="trim-handle trim-end" id="trimEnd"></div>
         </div>
         <div class="time-display" id="timeDisplay">00:00 / 00:00</div>
+        <span class="trim-info" id="trimInfo" style="display:none;"></span>
         <select class="speed-select" id="speedSelect">
           <option value="0.25">0.25x</option>
           <option value="0.5">0.5x</option>
@@ -537,6 +549,7 @@ function trackClick(name, ext1) {
         <button class="btn btn-record" id="recordBtn">🎬 录制</button>
         <button class="btn btn-download" id="downloadEventBtn">⬇ 下载原始</button>
         <button class="btn btn-metadata" id="metadataBtn">ℹ 元数据</button>
+        <button class="btn btn-trim" id="trimExportBtn" style="display:none;">✂ 剪辑导出</button>
       </div>
     </div>
 
@@ -1190,6 +1203,7 @@ function selectSegment(idx) {
 function loadSegment(seg) {
   document.getElementById('emptyState')?.remove();
   document.getElementById('controls').style.display = '';
+  showTrimHandles();
 
   // Update title
   document.getElementById('currentTitle').textContent = currentEvent.name;
@@ -2499,6 +2513,165 @@ document.addEventListener('keydown', (e) => {
     case 's': case 'S': document.getElementById('screenshotBtn').click(); break;
   }
 });
+
+// ═══════════════════════════════════════════
+// Trim / Clip export
+// ═══════════════════════════════════════════
+let trimStartPct = 0, trimEndPct = 1;
+let trimDragging = null;
+
+function showTrimHandles() {
+  document.getElementById('trimStart').style.display = '';
+  document.getElementById('trimEnd').style.display = '';
+  document.getElementById('trimExportBtn').style.display = '';
+  updateTrimUI();
+}
+
+function updateTrimUI() {
+  const start = document.getElementById('trimStart');
+  const end = document.getElementById('trimEnd');
+  const range = document.getElementById('trimRange');
+  start.style.left = (trimStartPct * 100) + '%';
+  end.style.left = (trimEndPct * 100) + '%';
+  range.style.left = (trimStartPct * 100) + '%';
+  range.style.width = ((trimEndPct - trimStartPct) * 100) + '%';
+
+  const dur = totalDuration || duration || 0;
+  const info = document.getElementById('trimInfo');
+  info.style.display = dur > 0 ? '' : 'none';
+  info.textContent = formatTime(trimStartPct * dur) + ' ~ ' + formatTime(trimEndPct * dur);
+
+  const btn = document.getElementById('trimExportBtn');
+  btn.textContent = '✂ 导出 ' + formatTime((trimEndPct - trimStartPct) * dur);
+}
+
+function formatTime(sec) {
+  const m = Math.floor(sec / 60); const s = Math.floor(sec % 60);
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+['trimStart', 'trimEnd'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('mousedown', e => { e.preventDefault(); trimDragging = id; });
+  el.addEventListener('touchstart', e => { e.preventDefault(); trimDragging = id; });
+});
+
+document.addEventListener('mousemove', e => {
+  if (!trimDragging) return;
+  const tl = document.getElementById('timeline');
+  const rect = tl.getBoundingClientRect();
+  let pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  if (trimDragging === 'trimStart') { trimStartPct = Math.min(pct, trimEndPct - 0.01); }
+  else { trimEndPct = Math.max(pct, trimStartPct + 0.01); }
+  updateTrimUI();
+});
+
+document.addEventListener('touchmove', e => {
+  if (!trimDragging) return;
+  const tl = document.getElementById('timeline');
+  const rect = tl.getBoundingClientRect();
+  let pct = Math.max(0, Math.min(1, (e.touches[0].clientX - rect.left) / rect.width));
+  if (trimDragging === 'trimStart') { trimStartPct = Math.min(pct, trimEndPct - 0.01); }
+  else { trimEndPct = Math.max(pct, trimStartPct + 0.01); }
+  updateTrimUI();
+});
+
+document.addEventListener('mouseup', () => { trimDragging = null; });
+document.addEventListener('touchend', () => { trimDragging = null; });
+
+document.getElementById('trimExportBtn').onclick = async () => {
+  const btn = document.getElementById('trimExportBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ 处理中...';
+  const dur = totalDuration || duration || 0;
+  const startSec = trimStartPct * dur;
+  const endSec = trimEndPct * dur;
+  const clipDur = endSec - startSec;
+  if (clipDur < 0.5) { showToast('选择范围太短'); btn.disabled = false; updateTrimUI(); return; }
+
+  // Seek master to start
+  const masterVid = videos.front || Object.values(videos).find(v => v);
+  if (!masterVid) { showToast('没有视频'); btn.disabled = false; updateTrimUI(); return; }
+
+  const oldTime = masterVid.currentTime;
+  const oldRate = masterVid.playbackRate;
+  const wasPaused = masterVid.paused;
+  masterVid.pause();
+  masterVid.playbackRate = 4;
+
+  // Setup canvas
+  const canvas = document.createElement('canvas');
+  const isSingle = currentView !== 'all';
+  if (isSingle && videos[currentView]) {
+    const v = videos[currentView];
+    canvas.width = v.videoWidth || 1280;
+    canvas.height = v.videoHeight || 720;
+  } else {
+    canvas.width = 1280; canvas.height = 720;
+  }
+  const ctx = canvas.getContext('2d');
+
+  // Positions for 6-camera grid
+  const pos = {
+    front:{x:0,y:0,w:640,h:360}, back:{x:640,y:0,w:640,h:360},
+    left_pillar:{x:0,y:360,w:640,h:360}, right_pillar:{x:640,y:360,w:640,h:360},
+    left_repeater:{x:0,y:720,w:640,h:360}, right_repeater:{x:640,y:720,w:640,h:360}
+  };
+
+  const stream = canvas.captureStream(10); // 10 FPS for clip export
+  const chunks = [];
+  const mr = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm' });
+  mr.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+
+  const done = new Promise(resolve => { mr.onstop = resolve; });
+  mr.start();
+
+  // Capture frames
+  const fps = 10;
+  const totalFrames = Math.ceil(clipDur * fps);
+  const frameInterval = 1 / fps;
+
+  for (let i = 0; i < totalFrames; i++) {
+    const t = startSec + i * frameInterval;
+    masterVid.currentTime = t;
+    await new Promise(r => { masterVid.onseeked = r; setTimeout(r, 200); }); // wait for seek
+
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (isSingle && videos[currentView]) {
+      const v = videos[currentView];
+      if (v.videoWidth) ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+    } else {
+      for (const cam of CAM_LAYOUT) {
+        const v = videos[cam];
+        if (!v?.videoWidth) continue;
+        const p = pos[cam];
+        ctx.drawImage(v, p.x, p.y, p.w, p.h);
+      }
+    }
+    mr.requestData();
+  }
+
+  mr.stop();
+  await done;
+
+  // Download
+  const blob = new Blob(chunks, { type: 'video/webm' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'clip_' + formatTime(startSec).replace(':','-') + '_' + formatTime(endSec).replace(':','-') + '.webm';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+
+  // Restore
+  masterVid.playbackRate = oldRate;
+  masterVid.currentTime = oldTime;
+  if (!wasPaused) masterVid.play();
+  btn.disabled = false;
+  updateTrimUI();
+  showToast('剪辑已导出');
+};
 </script>
 </body>
 </html>
