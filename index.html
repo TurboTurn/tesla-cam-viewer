@@ -178,11 +178,19 @@ body {
 }
 .cam-tab:hover { color:var(--text); border-color:#3a3f48; background:var(--hover); }
 .cam-tab.active { background:var(--accent); color:#fff; border-color:var(--accent); box-shadow:0 2px 8px var(--accent-glow); }
-.btn-secondary.recording { background:var(--accent); color:#fff; border-color:var(--accent); animation:pulse 1.4s infinite; }
+.btn-record.recording { background:var(--accent); color:#fff; border-color:var(--accent); animation:pulse 1.4s infinite; }
 @keyframes pulse { 0%,100%{opacity:1; box-shadow:0 2px 8px var(--accent-glow);} 50%{opacity:.55; box-shadow:0 2px 20px var(--accent-glow);} }
 
 .action-bar { display:flex; gap:8px; flex-wrap:wrap; }
 .action-bar .btn { font-size:12px; padding:7px 12px; }
+.action-bar .btn-screenshot { background:#4a9eff; box-shadow:0 2px 10px rgba(74,158,255,.3); color:#fff; }
+.action-bar .btn-screenshot:hover { box-shadow:0 4px 18px rgba(74,158,255,.45); }
+.action-bar .btn-record { background:#26a69a; box-shadow:0 2px 10px rgba(38,166,154,.3); color:#fff; }
+.action-bar .btn-record:hover { box-shadow:0 4px 18px rgba(38,166,154,.45); }
+.action-bar .btn-download { background:#7c4dff; box-shadow:0 2px 10px rgba(124,77,255,.3); color:#fff; }
+.action-bar .btn-download:hover { box-shadow:0 4px 18px rgba(124,77,255,.45); }
+.action-bar .btn-metadata { background:#42a5f5; box-shadow:0 2px 10px rgba(66,165,245,.3); color:#fff; }
+.action-bar .btn-metadata:hover { box-shadow:0 4px 18px rgba(66,165,245,.45); }
 
 /* Empty state */
 .empty-state {
@@ -524,10 +532,10 @@ function trackClick(name, ext1) {
         <button class="cam-tab layout-tab" data-layout="quad-rear">🔲 前后+左后右后</button>
       </div>
       <div class="action-bar">
-        <button class="btn btn-secondary" id="screenshotBtn">📸 截图</button>
-        <button class="btn btn-secondary" id="recordBtn">🎬 录制</button>
-        <button class="btn btn-secondary" id="downloadEventBtn">⬇ 下载原始</button>
-        <button class="btn btn-secondary" id="metadataBtn">ℹ 元数据</button>
+        <button class="btn btn-screenshot" id="screenshotBtn">📸 截图</button>
+        <button class="btn btn-record" id="recordBtn">🎬 录制</button>
+        <button class="btn btn-download" id="downloadEventBtn">⬇ 下载原始</button>
+        <button class="btn btn-metadata" id="metadataBtn">ℹ 元数据</button>
       </div>
     </div>
 
