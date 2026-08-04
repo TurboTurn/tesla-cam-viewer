@@ -24,7 +24,20 @@ body {
     radial-gradient(ellipse at 50% 0%, rgba(232,33,15,.04) 0%, transparent 70%),
     url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.025'/%3E%3C/svg%3E");
 }
-.app { display:flex; height:100vh; height:100dvh; overflow:hidden; }
+.app { display:flex; height:calc(100vh - 36px); height:calc(100dvh - 36px); overflow:hidden; }
+
+/* ── Footer ── */
+body > footer {
+  height:36px; display:flex; align-items:center; justify-content:center;
+  gap:6px; font-size:11px; color:var(--dim); font-family:var(--font);
+  border-top:1px solid var(--border); background:var(--panel);
+}
+body > footer a {
+  color:var(--dim); text-decoration:none; transition:color .2s;
+  display:inline-flex; align-items:center; gap:4px;
+}
+body > footer a:hover { color:var(--accent); }
+body > footer .sep { color:var(--border); margin:0 4px; }
 
 /* ── Sidebar ── */
 .sidebar {
@@ -570,6 +583,17 @@ function trackClick(name, ext1) {
     </div>
   </div>
 </div>
+
+<footer>
+  <a href="https://github.com/TurboTurn/tesla-cam-viewer" target="_blank" rel="noopener">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+    TurboTurn/tesla-cam-viewer
+  </a>
+  <span class="sep">|</span>
+  <span>MIT 开源</span>
+  <span class="sep">|</span>
+  <span>纯前端 · 无需安装</span>
+</footer>
 
 <input type="file" id="folderInput" webkitdirectory directory multiple>
 <input type="file" id="fileInput" multiple accept="video/*">
