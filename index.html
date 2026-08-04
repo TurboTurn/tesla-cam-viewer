@@ -2,8 +2,10 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Tesla 监控视频查看器</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="sei-telemetry.js?v4"></script>
@@ -303,6 +305,8 @@ body > footer .sep { color:var(--border); margin:0 4px; }
     background:var(--panel);
     padding-top:constant(safe-area-inset-top);
     padding-top:env(safe-area-inset-top);
+    padding-bottom:constant(safe-area-inset-bottom);
+    padding-bottom:env(safe-area-inset-bottom);
   }
   .app { height:100%; flex-direction:column; overflow:hidden; background:var(--bg);
     background-image:radial-gradient(ellipse at 50% 0%, rgba(232,33,15,.04) 0%, transparent 70%);
