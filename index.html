@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Tesla 监控视频查看器</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -50,7 +50,7 @@ body > footer .sep { color:var(--border); margin:0 4px; }
   background:linear-gradient(180deg, var(--accent) 0%, transparent 40%, transparent 60%, var(--accent) 100%);
   opacity:.6; pointer-events:none;
 }
-.sidebar-header { padding:18px 18px 14px; border-bottom:1px solid var(--border); }
+.sidebar-header { padding:18px 18px 14px; border-bottom:1px solid var(--border); padding-top:calc(18px + env(safe-area-inset-top, 0px)); }
 .sidebar-header h1 { font-size:20px; font-weight:600; margin-bottom:14px; letter-spacing:-.01em; }
 .sidebar-header h1 span { color:var(--accent); font-weight:700; }
 
@@ -126,6 +126,7 @@ body > footer .sep { color:var(--border); margin:0 4px; }
   padding:10px 20px; background:var(--panel); border-bottom:1px solid var(--border);
   display:flex; align-items:center; justify-content:space-between;
   min-height:48px; flex-shrink:0; gap:10px;
+  padding-top:calc(10px + env(safe-area-inset-top, 0px));
 }
 .topbar-left { display:flex; align-items:center; gap:10px; min-width:0; flex:1; }
 .topbar .title { font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; letter-spacing:-.01em; }
