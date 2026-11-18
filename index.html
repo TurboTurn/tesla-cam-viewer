@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Tesla 监控视频查看器</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23eef1f5'/%3E%3Ccircle cx='32' cy='32' r='22' fill='%232563eb'/%3E%3Cpath d='M27 21 L46 32 L27 43 Z' fill='%23ffffff'/%3E%3C/svg%3E">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -13,17 +14,15 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
 * { margin:0; padding:0; box-sizing:border-box; }
 :root {
-  --bg:#0b0d10; --panel:#111418; --panel2:#181c22; --border:#1f232a;
-  --accent:#e8210f; --accent-glow:rgba(232,33,15,.25); --text:#e4e6ea; --dim:#6e737a;
-  --hover:#1a1e25; --radius:6px; --radius-lg:10px;
+  --bg:#f4f6f9; --panel:#ffffff; --panel2:#eef1f5; --border:#e2e6ec;
+  --accent:#e8210f; --accent-glow:rgba(232,33,15,.12); --text:#1a1d24; --dim:#5c6470;
+  --blue:#2563eb; --blue-glow:rgba(37,99,235,.18);
+  --hover:#f4f6fa; --radius:8px; --radius-lg:12px;
   --font:'DM Sans', -apple-system, system-ui, sans-serif;
 }
 body {
   background:var(--bg); color:var(--text); font-family:var(--font); font-weight:400;
   overflow:hidden; height:100vh; height:100dvh;
-  background-image:
-    radial-gradient(ellipse at 50% 0%, rgba(232,33,15,.04) 0%, transparent 70%),
-    url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.025'/%3E%3C/svg%3E");
 }
 .app { display:flex; height:calc(100vh - 36px); height:calc(100dvh - 36px); overflow:hidden; }
 
@@ -48,27 +47,26 @@ body > footer .sep { color:var(--border); margin:0 4px; }
   position:relative;
 }
 .sidebar::after {
-  content:''; position:absolute; right:-1px; top:0; bottom:0; width:2px;
-  background:linear-gradient(180deg, var(--accent) 0%, transparent 40%, transparent 60%, var(--accent) 100%);
-  opacity:.6; pointer-events:none;
+  content:''; position:absolute; right:0; top:0; bottom:0; width:1px;
+  background:var(--border); pointer-events:none;
 }
 .sidebar-header { padding:18px 18px 14px; border-bottom:1px solid var(--border); }
-.sidebar-header h1 { font-size:20px; font-weight:600; margin-bottom:14px; letter-spacing:-.01em; }
+.sidebar-header h1 { font-size:20px; font-weight:700; margin-bottom:14px; letter-spacing:-.01em; }
 .sidebar-header h1 span { color:var(--accent); font-weight:700; }
 
 /* ── Buttons ── */
 .btn {
   display:inline-flex; align-items:center; justify-content:center; gap:5px;
-  padding:9px 16px; background:var(--accent); color:#fff; border:none;
-  border-radius:var(--radius); font-size:13px; font-family:var(--font); font-weight:500;
+  padding:9px 16px; background:var(--blue); color:#fff; border:none;
+  border-radius:var(--radius); font-size:13px; font-family:var(--font); font-weight:600;
   cursor:pointer; text-align:center; transition:all .2s ease; letter-spacing:-.01em;
-  box-shadow:0 2px 8px var(--accent-glow);
+  box-shadow:0 2px 8px var(--blue-glow);
 }
-.btn:hover { transform:translateY(-1px); box-shadow:0 4px 16px var(--accent-glow); }
+.btn:hover { transform:translateY(-1px); box-shadow:0 4px 14px var(--blue-glow); }
 .btn:active { transform:translateY(0); }
-.btn-secondary { background:var(--panel2); box-shadow:none; }
-.btn-secondary:hover { background:var(--hover); box-shadow:none; }
-.btn:disabled { opacity:.35; cursor:default; transform:none; box-shadow:none; }
+.btn-secondary { background:var(--panel2); color:var(--text); box-shadow:none; }
+.btn-secondary:hover { background:#e4e9f0; box-shadow:none; }
+.btn:disabled { opacity:.4; cursor:default; transform:none; box-shadow:none; }
 
 .upload-zone { padding:14px 18px; border-bottom:1px solid var(--border); }
 .upload-zone p { font-size:15px; color:var(--dim); margin-bottom:10px; line-height:1.5; font-weight:400; }
@@ -83,18 +81,18 @@ body > footer .sep { color:var(--border); margin:0 4px; }
   border-radius:12px; color:var(--dim); font-size:11px; cursor:pointer;
   transition:all .18s ease; white-space:nowrap; font-weight:500; font-family:var(--font);
 }
-.filter-tab:hover { color:var(--text); border-color:#3a3f48; }
+.filter-tab:hover { color:var(--text); border-color:#c9d0da; background:var(--panel); }
 .filter-tab.active { background:var(--accent); color:#fff; border-color:var(--accent); box-shadow:0 2px 8px var(--accent-glow); }
 .event-list { flex:1; overflow-y:auto; }
-.event-list::-webkit-scrollbar { width:4px; }
+.event-list::-webkit-scrollbar { width:6px; }
 .event-list::-webkit-scrollbar-track { background:transparent; }
-.event-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+.event-list::-webkit-scrollbar-thumb { background:#d4dae2; border-radius:3px; }
 .event-item {
-  padding:11px 18px; border-bottom:1px solid rgba(255,255,255,.03);
+  padding:11px 18px; border-bottom:1px solid var(--border);
   cursor:pointer; transition:all .15s ease; display:flex; align-items:center; gap:10px;
 }
 .event-item:hover { background:var(--hover); }
-.event-item.active { background:var(--accent); color:#fff; box-shadow:inset 3px 0 0 rgba(255,255,255,.2); }
+.event-item.active { background:var(--accent); color:#fff; box-shadow:inset 3px 0 0 rgba(255,255,255,.3); }
 .event-item .ev-icon { font-size:15px; flex-shrink:0; width:20px; text-align:center; opacity:.7; }
 .event-item.active .ev-icon { opacity:1; }
 .event-item .ev-info { flex:1; min-width:0; }
@@ -120,6 +118,37 @@ body > footer .sep { color:var(--border); margin:0 4px; }
 }
 .seg-item:hover { background:var(--hover); color:var(--text); }
 .seg-item.active { border-left-color:var(--accent); color:var(--accent); background:rgba(232,33,15,.06); }
+.event-item .ev-del {
+  margin-left:6px; flex-shrink:0; width:24px; height:24px; border:none; border-radius:6px;
+  background:transparent; color:var(--dim); font-size:14px; cursor:pointer; line-height:1;
+  opacity:0; transition:all .15s ease;
+}
+.event-item:hover .ev-del { opacity:1; }
+.event-item .ev-del:hover { background:rgba(232,33,15,.12); color:var(--accent); }
+.event-item.active .ev-del { color:rgba(255,255,255,.85); opacity:1; }
+.event-item.active .ev-del:hover { background:rgba(255,255,255,.2); color:#fff; }
+.seg-item { display:flex; align-items:center; justify-content:space-between; gap:6px; }
+.seg-item .seg-label { flex:1; }
+.seg-item .seg-del {
+  flex-shrink:0; width:22px; height:22px; border:none; border-radius:5px;
+  background:transparent; color:var(--dim); font-size:12px; cursor:pointer; line-height:1;
+  opacity:0; transition:all .15s ease;
+}
+.seg-item:hover .seg-del { opacity:1; }
+.seg-item .seg-del:hover { background:rgba(232,33,15,.12); color:var(--accent); }
+
+/* Delete confirmation modal */
+.del-modal { position:fixed; inset:0; background:rgba(15,18,24,.5); z-index:2500; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); animation:fadeIn .2s ease; }
+.del-box { background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-lg); padding:28px 30px; max-width:420px; width:88%; text-align:center; box-shadow:0 20px 60px rgba(26,29,36,.22); }
+.del-icon { font-size:34px; margin-bottom:10px; }
+.del-box h3 { font-size:17px; font-weight:700; color:var(--text); margin-bottom:14px; }
+.del-lines { font-size:13px; line-height:1.8; color:var(--text); background:var(--panel2); border-radius:var(--radius); padding:12px 14px; margin-bottom:14px; text-align:left; word-break:break-all; }
+.del-warn { font-size:12px; color:var(--accent); font-weight:600; margin-bottom:20px; }
+.del-actions { display:flex; gap:10px; justify-content:center; }
+.del-actions .btn { min-width:110px; }
+.btn-danger { background:var(--accent) !important; box-shadow:0 2px 8px var(--accent-glow) !important; }
+.btn-danger:hover { box-shadow:0 4px 16px var(--accent-glow) !important; }
+
 .seg-separator { padding:4px 14px; text-align:center; color:var(--dim); font-size:10px; font-weight:500; }
 
 /* ── Main Area ── */
@@ -131,7 +160,7 @@ body > footer .sep { color:var(--border); margin:0 4px; }
 }
 .topbar-left { display:flex; align-items:center; gap:10px; min-width:0; flex:1; }
 .topbar .title { font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; letter-spacing:-.01em; }
-.topbar .meta { font-size:11px; color:var(--dim); white-space:nowrap; flex-shrink:0; font-weight:400; }
+.topbar .meta { font-size:14px; color:var(--dim); white-space:nowrap; flex-shrink:0; font-weight:400; }
 
 /* Video grid */
 .video-grid { flex:1; display:grid; gap:1px; background:#000; position:relative; min-height:0; overflow:hidden; width:100%; height:100%; }
@@ -154,21 +183,21 @@ body > footer .sep { color:var(--border); margin:0 4px; }
 .controls { padding:10px 20px 12px; background:var(--panel); border-top:1px solid var(--border); flex-shrink:0; }
 .timeline-wrap { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
 .play-btn {
-  width:34px; height:34px; border-radius:50%; border:none; background:var(--accent);
+  width:34px; height:34px; border-radius:50%; border:none; background:var(--blue);
   color:#fff; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center;
-  flex-shrink:0; transition:all .2s ease; box-shadow:0 2px 8px var(--accent-glow);
+  flex-shrink:0; transition:all .2s ease; box-shadow:0 2px 8px var(--blue-glow);
 }
-.play-btn:hover { transform:scale(1.06); box-shadow:0 4px 14px var(--accent-glow); }
+.play-btn:hover { transform:scale(1.06); box-shadow:0 4px 14px var(--blue-glow); }
 .play-btn:active { transform:scale(.97); }
 .timeline {
-  flex:1; height:8px; background:var(--panel2); border-radius:4px;
+  flex:1; height:8px; background:var(--panel2); border:1px solid var(--border); border-radius:4px;
   position:relative; cursor:pointer; margin:0 2px;
 }
 .timeline:hover { height:10px; }
 .timeline .progress { position:absolute; height:100%; background:var(--accent); border-radius:3px; width:0%; transition:width .08s linear; }
 .timeline .progress::after { content:''; position:absolute; right:-6px; top:50%; transform:translateY(-50%); width:12px; height:12px; border-radius:50%; background:var(--accent); opacity:0; transition:opacity .15s ease; box-shadow:0 0 6px var(--accent-glow); }
 .timeline:hover .progress::after { opacity:1; }
-.timeline .buffer { position:absolute; height:100%; background:rgba(255,255,255,.06); border-radius:3px; width:0%; }
+.timeline .buffer { position:absolute; height:100%; background:rgba(26,29,36,.08); border-radius:3px; width:0%; }
 /* Trim range & handles */
 .timeline .trim-range { position:absolute; top:0; height:100%; background:rgba(74,158,255,.3); border-radius:0; }
 .trim-handle {
@@ -201,14 +230,14 @@ body > footer .sep { color:var(--border); margin:0 4px; }
 /* Camera tabs */
 .cam-tabs { display:flex; gap:4px; margin-bottom:8px; flex-wrap:wrap; }
 .cam-tab {
-  padding:6px 13px; background:#20242c; border:1px solid #2a2f38;
-  border-radius:14px; color:#b0b8c0; font-size:14px; cursor:pointer;
-  transition:all .18s ease; white-space:nowrap; font-weight:500; font-family:var(--font);
+  padding:6px 13px; background:var(--panel); border:1px solid var(--border);
+  border-radius:14px; color:var(--dim); font-size:14px; cursor:pointer;
+  transition:all .18s ease; white-space:nowrap; font-weight:600; font-family:var(--font);
 }
-.cam-tab:hover { color:#e4e6ea; border-color:#444a54; background:#282d36; }
+.cam-tab:hover { color:var(--text); border-color:#c9d0da; background:var(--hover); }
 .cam-tab.active { background:var(--accent); color:#fff; border-color:var(--accent); box-shadow:0 2px 8px var(--accent-glow); }
-.btn-record.recording { background:var(--accent); color:#fff; border-color:var(--accent); animation:pulse 1.4s infinite; }
-@keyframes pulse { 0%,100%{opacity:1; box-shadow:0 2px 8px var(--accent-glow);} 50%{opacity:.55; box-shadow:0 2px 20px var(--accent-glow);} }
+.btn-record.recording { background:var(--accent) !important; color:#fff !important; border-color:var(--accent) !important; animation:pulse 1.4s infinite; }
+@keyframes pulse { 0%,100%{opacity:1; box-shadow:0 2px 8px var(--accent-glow);} 50%{opacity:.6; box-shadow:0 2px 20px var(--accent-glow);} }
 
 .action-bar { display:flex; gap:8px; flex-wrap:wrap; }
 .action-bar .btn { font-size:12px; padding:7px 12px; }
@@ -224,31 +253,32 @@ body > footer .sep { color:var(--border); margin:0 4px; }
 /* Empty state */
 .empty-state {
   flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
-  color:var(--dim); animation: fadeInUp .6s ease; padding:40px 20px;
+  color:var(--dim); animation: fadeInUp .6s ease; padding:20px 20px 24px;
+  background:var(--bg); position:absolute; inset:0; overflow-y:auto;
 }
-.empty-graphic { position:relative; margin-bottom:28px; }
+.empty-graphic { position:relative; margin-bottom:14px; }
 .empty-ring {
-  width:100px; height:100px; border-radius:50%;
-  border:3px solid rgba(255,255,255,.08);
+  width:72px; height:72px; border-radius:50%;
+  border:3px solid rgba(37,99,235,.15);
   animation: ringPulse 3s ease-in-out infinite;
 }
 @keyframes ringPulse {
-  0%,100% { transform:scale(1); opacity:.4; border-color:rgba(255,255,255,.06); }
-  50% { transform:scale(1.3); opacity:.8; border-color:rgba(255,255,255,.15); }
+  0%,100% { transform:scale(1); opacity:.5; border-color:rgba(37,99,235,.15); }
+  50% { transform:scale(1.3); opacity:1; border-color:rgba(37,99,235,.45); }
 }
 .empty-icon {
   position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-  font-size:48px; opacity:.6;
+  font-size:34px; opacity:.7;
 }
-.empty-title { font-size:20px; font-weight:600; color:var(--text); margin-bottom:28px; letter-spacing:-.02em; }
-.empty-steps { display:flex; flex-direction:column; gap:12px; margin-bottom:24px; }
+.empty-title { font-size:20px; font-weight:600; color:var(--text); margin-bottom:16px; letter-spacing:-.02em; }
+.empty-steps { display:flex; flex-direction:column; gap:8px; margin-bottom:14px; }
 .empty-step {
   display:flex; align-items:center; gap:10px; font-size:12px; color:var(--dim);
-  background:var(--panel2); border:1px solid var(--border); border-radius:var(--radius);
-  padding:10px 14px; min-width:320px; max-width:420px; width:100%;
+  background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+  padding:8px 14px; min-width:320px; max-width:420px; width:100%;
   transition:all .2s ease;
 }
-.empty-step:hover { border-color:#3a3f48; }
+.empty-step:hover { border-color:#c9d0da; box-shadow:0 2px 10px rgba(0,0,0,.05); }
 .step-num {
   width:22px; height:22px; border-radius:50%; background:var(--accent);
   color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center;
@@ -256,7 +286,7 @@ body > footer .sep { color:var(--border); margin:0 4px; }
 }
 .step-text { line-height:1.5; }
 .step-text b { color:var(--text); font-weight:600; }
-.empty-hint { font-size:11px; color:var(--dim); opacity:.5; }
+.empty-hint { font-size:11px; color:var(--dim); }
 @keyframes fadeInUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
 
 /* Toast */
@@ -265,7 +295,7 @@ body > footer .sep { color:var(--border); margin:0 4px; }
   background:var(--panel); border:1px solid var(--border); color:var(--text);
   padding:10px 22px; border-radius:var(--radius-lg); font-size:12px; z-index:1000;
   opacity:0; transition:opacity .25s ease; pointer-events:none;
-  box-shadow:0 8px 32px rgba(0,0,0,.5); font-weight:500; letter-spacing:-.01em;
+  box-shadow:0 6px 24px rgba(26,29,36,.12); font-weight:600; letter-spacing:-.01em;
 }
 .toast.show { opacity:1; }
 
@@ -274,7 +304,7 @@ body > footer .sep { color:var(--border); margin:0 4px; }
 .ts-overlay {
   position:absolute; bottom:10px; right:10px; background:rgba(0,0,0,.75);
   backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
-  color:#fff; font-size:11px; padding:4px 10px; border-radius:4px;
+  color:#fff; font-size:15px; padding:5px 12px; border-radius:4px;
   pointer-events:none; font-variant-numeric:tabular-nums; z-index:5;
   white-space:nowrap; font-weight:500; border:1px solid rgba(255,255,255,.06);
 }
@@ -285,7 +315,7 @@ body > footer .sep { color:var(--border); margin:0 4px; }
   border:1px solid var(--border); border-radius:var(--radius-lg); padding:16px;
   font-size:11px; max-width:320px; z-index:10; display:none;
   max-height:calc(100vh - 120px); overflow-y:auto;
-  box-shadow:0 8px 40px rgba(0,0,0,.5);
+  box-shadow:0 8px 32px rgba(26,29,36,.14);
   backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
 }
 .metadata-panel.show { display:block; animation: fadeInUp .2s ease; }
@@ -293,7 +323,7 @@ body > footer .sep { color:var(--border); margin:0 4px; }
 .metadata-panel .md-label { color:var(--dim); }
 .metadata-panel h3 { font-size:12px; margin-bottom:10px; font-weight:600; letter-spacing:-.01em; }
 .metadata-panel .md-map { margin-top:10px; border-radius:6px; overflow:hidden; border:1px solid var(--border); }
-.metadata-panel .md-map #miniMap { width:100%; height:180px; background:#111; }
+.metadata-panel .md-map #miniMap { width:100%; height:180px; background:#e8ecf1; }
 .metadata-panel .md-map-link { margin-top:6px; font-size:10px; text-align:center; }
 .metadata-panel .md-map-link a { color:var(--accent); text-decoration:none; font-weight:500; }
 
@@ -308,9 +338,7 @@ body > footer .sep { color:var(--border); margin:0 4px; }
     padding-bottom:constant(safe-area-inset-bottom);
     padding-bottom:env(safe-area-inset-bottom);
   }
-  .app { height:100%; flex-direction:column; overflow:hidden; background:var(--bg);
-    background-image:radial-gradient(ellipse at 50% 0%, rgba(232,33,15,.04) 0%, transparent 70%);
-  }
+  .app { height:100%; flex-direction:column; overflow:hidden; background:var(--bg); }
   .sidebar { position:fixed; top:0; left:0; width:80%; max-width:300px; height:100vh; height:100dvh; max-height:100vh; z-index:200; transform:translateX(-100%); transition:transform .3s cubic-bezier(.4,0,.2,1); border-right:1px solid var(--border); padding-top:env(safe-area-inset-top, 0px); }
   .sidebar.open { transform:translateX(0); }
   .sidebar-toggle { display:block !important; }
@@ -334,7 +362,7 @@ body > footer .sep { color:var(--border); margin:0 4px; }
   .action-bar .btn { font-size:10px; padding:5px 7px; }
   .topbar { padding:8px 12px; min-height:44px; gap:6px; flex-shrink:0; }
   .topbar .title { font-size:20px; }
-  .topbar .meta { font-size:13px; max-width:35%; overflow:hidden; text-overflow:ellipsis; }
+  .topbar .meta { font-size:15px; max-width:35%; overflow:hidden; text-overflow:ellipsis; }
   .sidebar-toggle { font-size:16px; padding:8px 14px; }
   .sidebar-header { padding:14px 16px; flex-shrink:0; }
   .sidebar-header h1 { font-size:20px; margin-bottom:10px; }
@@ -353,6 +381,7 @@ body > footer .sep { color:var(--border); margin:0 4px; }
   .controls { padding:8px 10px; flex-shrink:0; }
   .action-bar .btn { font-size:14px; padding:8px 12px; }
   .cam-tab { padding:6px 12px; font-size:14px; flex-shrink:0; }
+  .event-item .ev-del, .seg-item .seg-del { opacity:1; }
   /* Mobile empty state */
   .empty-state { padding:24px 16px; }
   .empty-title { font-size:26px; margin-bottom:22px; }
@@ -373,7 +402,7 @@ body > footer .sep { color:var(--border); margin:0 4px; }
 .tip-overlay { position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:300; display:none; align-items:center; justify-content:center; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
 .tip-overlay.show { display:flex; animation: fadeIn .2s ease; }
 @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-.tip-modal { background:var(--panel); border-radius:var(--radius-lg); padding:32px; max-width:520px; width:90%; text-align:center; box-shadow:0 16px 48px rgba(0,0,0,.6); border:1px solid var(--border); }
+.tip-modal { background:var(--panel); border-radius:var(--radius-lg); padding:32px; max-width:520px; width:90%; text-align:center; box-shadow:0 20px 60px rgba(26,29,36,.2); border:1px solid var(--border); }
 .tip-modal h3 { font-size:18px; margin-bottom:4px; color:var(--text); font-weight:600; letter-spacing:-.01em; }
 .tip-modal .tip-sub { font-size:13px; color:var(--dim); margin-bottom:24px; font-weight:400; }
 .tip-modal .qr-row { display:flex; gap:80px; justify-content:center; }
@@ -727,7 +756,7 @@ async function restoreDirHandle() {
     db.close();
     console.log('[restore] stored:', stored ? stored.handle?.name : 'none');
     if (stored && stored.handle) {
-      const perm = await stored.handle.queryPermission({ mode: 'read' });
+      const perm = await stored.handle.queryPermission({ mode: 'readwrite' });
       console.log('[restore] permission:', perm);
       if (perm === 'granted') {
         savedDirHandle = stored.handle;
@@ -759,7 +788,7 @@ function showRestoreButton() {
   btn.textContent = '🔄 恢复上次文件夹';
   btn.onclick = async () => {
     try {
-      const result = await savedDirHandle.requestPermission({ mode: 'read' });
+      const result = await savedDirHandle.requestPermission({ mode: 'readwrite' });
       if (result === 'granted') {
         const files = await collectDirFiles(savedDirHandle);
         if (files.length) {
@@ -812,7 +841,7 @@ selectBtn.onclick = async () => {
   trackClick('选择文件夹');
   if (hasFSAccess) {
     try {
-      const dirHandle = await window.showDirectoryPicker();
+      const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
       savedDirHandle = dirHandle;
       await saveDirHandle(dirHandle);
       console.log('[select] saved dirHandle:', dirHandle.name);
@@ -841,14 +870,14 @@ document.getElementById('selectFileBtn').onclick = () => {
 
 // Collect files from File System Access API directory handle
 // Returns array of File objects with webkitRelativePath set
-async function collectDirFiles(dirHandle, basePath) {
+async function collectDirFiles(dirHandle, basePath, grandParentHandle) {
   basePath = basePath || dirHandle.name;
   const files = [];
   for await (const entry of dirHandle.values()) {
     const entryPath = basePath + '/' + entry.name;
     if (entry.kind === 'directory') {
-      // Recurse into subdirectory
-      const subFiles = await collectDirFiles(entry, entryPath);
+      // Recurse into subdirectory (pass this dir's handle as parent for children)
+      const subFiles = await collectDirFiles(entry, entryPath, dirHandle);
       files.push(...subFiles);
     } else if (entry.kind === 'file') {
       // Get File object
@@ -859,6 +888,12 @@ async function collectDirFiles(dirHandle, basePath) {
         writable: false,
         configurable: true
       });
+      // Attach handles for deletion support
+      Object.defineProperty(file, '__handle', { value: entry, writable: false, configurable: true });
+      Object.defineProperty(file, '__parentHandle', { value: dirHandle, writable: false, configurable: true });
+      Object.defineProperty(file, '__grandParentHandle', { value: grandParentHandle || null, writable: false, configurable: true });
+      Object.defineProperty(file, '__parentDirName', { value: dirHandle.name, writable: false, configurable: true });
+      Object.defineProperty(file, '__dirPath', { value: basePath, writable: false, configurable: true });
       files.push(file);
     }
   }
@@ -1021,6 +1056,145 @@ function parseFolderFiles(files) {
 }
 
 // ═══════════════════════════════════════════
+// Delete from U-disk (File System Access API)
+// ═══════════════════════════════════════════
+const canDeleteFiles = hasFSAccess; // only FS Access path keeps file handles
+
+// Collect all File objects belonging to an event
+function filesOfEvent(ev) {
+  const out = [];
+  Object.values(ev.segments).forEach(seg => {
+    Object.values(seg.files).forEach(f => out.push(f));
+  });
+  if (ev.metadata) out.push(ev.metadata);
+  return out;
+}
+
+function filesOfSegment(seg) {
+  return Object.values(seg.files);
+}
+
+// Show a styled confirmation modal. onConfirm is async.
+function confirmDelete({ title, lines, onConfirm }) {
+  const modal = document.createElement('div');
+  modal.className = 'del-modal';
+  modal.innerHTML = `
+    <div class="del-box">
+      <div class="del-icon">🗑️</div>
+      <h3>${title}</h3>
+      <div class="del-lines">${lines.join('<br>')}</div>
+      <div class="del-warn">⚠️ 直接从 U 盘删除，无法恢复，也没有回收站。</div>
+      <div class="del-actions">
+        <button class="btn btn-secondary" data-act="cancel">取消</button>
+        <button class="btn btn-danger" data-act="ok">确认删除</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  const close = () => modal.remove();
+  modal.querySelector('[data-act="cancel"]').onclick = close;
+  modal.onclick = (e) => { if (e.target === modal) close(); };
+  modal.querySelector('[data-act="ok"]').onclick = async () => {
+    const btn = modal.querySelector('[data-act="ok"]');
+    btn.disabled = true;
+    btn.textContent = '删除中…';
+    try {
+      await onConfirm();
+      close();
+    } catch (err) {
+      console.error('[delete] failed:', err);
+      btn.disabled = false;
+      btn.textContent = '重试';
+      showToast('删除失败：' + (err && err.name === 'NotAllowedError' ? '没有写入权限' : (err.message || '未知错误')));
+    }
+  };
+}
+
+// Actually delete a set of File objects via their handles
+async function deleteFiles(files) {
+  const handles = files.map(f => f.__handle).filter(Boolean);
+  if (!handles.length) throw new Error('这些文件没有可用的句柄（请用 Chrome/Edge 重新选择文件夹）');
+  for (const h of handles) {
+    await h.remove();
+  }
+}
+
+// Delete a whole event: prefer removing its dedicated folder (also cleans thumb.png, event.json, empty dir).
+// Falls back to per-file deletion for flat layouts like RecentClips.
+// Returns { mode, count }.
+async function deleteEvent(ev) {
+  const files = filesOfEvent(ev);
+  const vids = files.filter(f => f.__handle);
+  if (!vids.length) throw new Error('这些文件没有可用的句柄（请用 Chrome/Edge 重新选择文件夹）');
+
+  const dirs = new Set(vids.map(f => f.__parentHandle));
+  const dirPath = vids[0].__dirPath || '';
+  const sameDir = dirs.size === 1;
+  const parentHandle = vids[0].__parentHandle;
+  const grand = vids[0].__grandParentHandle;
+  const dirName = vids[0].__parentDirName;
+
+  // A "dedicated" event folder = all videos in one dir, dir has a parent,
+  // and it's not the flat RecentClips / loose-recordings layout.
+  const isFlat = /\/(RecentClips|Recordings_)/.test(dirPath) || /^(RecentClips|Recordings_)/.test(dirPath);
+  if (sameDir && grand && dirName && !isFlat) {
+    try {
+      await grand.removeEntry(dirName, { recursive: true });
+      return { mode: 'folder', count: files.length };
+    } catch (e) {
+      console.warn('[delete] removeEntry failed, falling back to per-file:', e);
+      // fall through to per-file deletion
+    }
+  }
+
+  for (const h of vids.map(f => f.__handle)) await h.remove();
+  return { mode: 'files', count: vids.length };
+}
+
+// Delete one segment (all camera files at that moment)
+function requestDeleteSegment(eventIdx, segIdx) {
+  const ev = events[eventIdx];
+  const seg = ev.segments[segIdx];
+  const files = filesOfSegment(seg);
+  const names = files.map(f => f.name).join(', ');
+  confirmDelete({
+    title: '删除这个时间段的视频？',
+    lines: [`时间：${seg.name.replace('_', ' ')}`, `${files.length} 个摄像头文件：${names}`],
+    onConfirm: async () => {
+      await deleteFiles(files);
+      trackClick('删除片段成功', files.length + '个文件');
+      showToast(`已删除 ${files.length} 个文件`);
+      await rebuildAfterDelete();
+    }
+  });
+}
+
+// Delete a whole event (all segments + metadata)
+function requestDeleteEvent(eventIdx) {
+  const ev = events[eventIdx];
+  const files = filesOfEvent(ev);
+  const segCount = Object.keys(ev.segments).length;
+  confirmDelete({
+    title: '删除整个事件？',
+    lines: [`事件：${ev.name}`, `${segCount} 个时间段，共 ${files.length} 个视频`, `将删除整个事件文件夹（含缩略图等）`, `${ev.type || ''}`],
+    onConfirm: async () => {
+      const result = await deleteEvent(ev);
+      trackClick('删除事件成功', result.mode);
+      showToast(result.mode === 'folder' ? '已删除整个事件文件夹' : `已删除事件，共 ${result.count} 个文件`);
+      await rebuildAfterDelete();
+    }
+  });
+}
+
+// Re-scan folder and refresh UI after deletion
+async function rebuildAfterDelete() {
+  if (!savedDirHandle) { location.reload(); return; }
+  const files = await collectDirFiles(savedDirHandle);
+  events = parseFolderFiles(files);
+  renderEventList();
+  setupFilterTabs();
+}
+
+// ═══════════════════════════════════════════
 // Render event list
 // ═══════════════════════════════════════════
 function renderEventList() {
@@ -1067,9 +1241,16 @@ function renderEventList() {
         <span class="ev-type-badge ${typeClass}">${typeLabel}</span>
       </div>
       <div class="ev-segs">${segCount}段 <span class="ev-arrow">▾</span></div>
+      ${canDeleteFiles ? `<button class="ev-del" title="删除整个事件" aria-label="删除整个事件">🗑</button>` : ''}
     `;
 
     div.onclick = () => { trackClick('选择事件', timeDisplay); selectEvent(idx); };
+    const delBtn = div.querySelector('.ev-del');
+    if (delBtn) delBtn.onclick = (e) => {
+      e.stopPropagation();
+      trackClick('删除事件', timeDisplay);
+      requestDeleteEvent(idx);
+    };
     list.appendChild(div);
   });
 }
@@ -1152,8 +1333,16 @@ function selectEvent(idx) {
     currentEvent.segments.forEach((seg, si) => {
       const sd = document.createElement('div');
       sd.className = 'seg-item';
-      sd.textContent = `段 ${si+1}: ${seg.name.split('_')[1]}`;
+      const segLabel = `段 ${si+1}: ${seg.name.split('_')[1]}`;
+      sd.innerHTML = `<span class="seg-label">${segLabel}</span>${canDeleteFiles ? `<button class="seg-del" title="删除这个时间段" aria-label="删除这个时间段">🗑</button>` : ''}`;
       sd.onclick = (e) => { e.stopPropagation(); trackClick('选择片段', si+''); selectSegment(si); };
+      const segDel = sd.querySelector('.seg-del');
+      if (segDel) segDel.onclick = (e) => {
+        e.stopPropagation();
+        trackClick('删除片段', si+'');
+        const curEventIdx = events.indexOf(currentEvent);
+        requestDeleteSegment(curEventIdx, si);
+      };
       segList.appendChild(sd);
     });
     document.querySelector('.event-item.active')?.after(segList);
@@ -2282,7 +2471,7 @@ document.getElementById('downloadEventBtn').onclick = () => {
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;display:flex;align-items:center;justify-content:center;';
 
   const box = document.createElement('div');
-  box.style.cssText = `background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:20px;max-width:360px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.5);`;
+  box.style.cssText = `background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:20px;max-width:360px;width:90%;box-shadow:0 8px 32px rgba(26,29,36,.18);`;
 
   const availableCams = CAM_LAYOUT.filter(cam => currentSegment.files[cam]);
 
